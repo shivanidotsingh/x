@@ -31,6 +31,31 @@ const H = () => canvas.offsetHeight;
 const CX = () => W() / 2;
 const CY = () => H() / 2;
 
+// Portrait mode: rotate the whole canvas 90° so tails go top/bottom
+const isPortrait = () => W() < H();
+
+// When portrait, we draw into a rotated coordinate space.
+// From the knot's perspective, everything is the same — horizontal tails,
+// horizontal centre line. We just rotate the canvas before drawing.
+function beginFrame() {
+  ctx.clearRect(0, 0, W(), H());
+  ctx.save();
+  if (isPortrait()) {
+    // Rotate 90° clockwise around canvas centre
+    ctx.translate(W()/2, H()/2);
+    ctx.rotate(Math.PI / 2);
+    ctx.translate(-H()/2, -W()/2);
+    // Now drawing space is H wide × W tall (landscape coordinates)
+  }
+}
+function endFrame() { ctx.restore(); }
+
+// In portrait mode, the "logical" canvas is H wide × W tall
+function LW() { return isPortrait() ? H() : W(); }
+function LH() { return isPortrait() ? W() : H(); }
+function LCX() { return LW() / 2; }
+function LCY() { return LH() / 2; }
+
 const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const FG = isDark ? 'rgba(235,230,220,ALPHA)' : 'rgba(22,20,18,ALPHA)';
 const FONT_SC = '500 10px -apple-system, sans-serif';
@@ -65,8 +90,8 @@ function knotXY(t, R) {
   const phi = 5*t, theta = 7*t;
   const r = R*0.55 + R*0.45*Math.cos(theta);
   return {
-    x: CX() + r*Math.cos(phi),
-    y: CY() + r*Math.sin(phi)*0.70 + R*0.45*Math.sin(theta)*0.30
+    x: LCX() + r*Math.cos(phi),
+    y: LCY() + r*Math.sin(phi)*0.70 + R*0.45*Math.sin(theta)*0.30
   };
 }
 
@@ -113,10 +138,10 @@ function knotLen() { return KT.len+(KL.len-KT.len)*(1-tightness); }
 
 const MARGIN = 10;
 function currentR()   { return R_TIGHT+(R_LOOSE-R_TIGHT)*(1-tightness); }
-function leftTailW()  { return CX()-currentR()-MARGIN; }
-function rightTailW() { return CX()-currentR()-MARGIN; }
+function leftTailW()  { return LCX()-currentR()-MARGIN; }
+function rightTailW() { return LCX()-currentR()-MARGIN; }
 function leftTailX()  { return MARGIN; }
-function rightTailX() { return CX()+currentR(); }
+function rightTailX() { return LCX()+currentR(); }
 function totalPathLen() { return leftTailW() + knotLen() + rightTailW(); }
 
 // Full path: s=0 at left edge, s=totalPathLen() at right edge
@@ -127,17 +152,17 @@ function pathPt(s) {
   const kl  = knotLen();
   const kEnd = ltw + kl;
 
-  if (s <= 0) return { x: leftTailX(), y: CY(), angle: 0 };
-  if (s >= ltw + kl + rightTailW()) return { x: rightTailX()+rightTailW(), y: CY(), angle: 0 };
+  if (s <= 0) return { x: leftTailX(), y: LCY(), angle: 0 };
+  if (s >= ltw + kl + rightTailW()) return { x: rightTailX()+rightTailW(), y: LCY(), angle: 0 };
 
   if (s <= ltw) {
     // Left tail — purely horizontal
-    return { x: leftTailX()+s, y: CY(), angle: 0 };
+    return { x: leftTailX()+s, y: LCY(), angle: 0 };
   }
 
   if (s >= kEnd) {
     // Right tail — purely horizontal
-    return { x: rightTailX()+(s-kEnd), y: CY(), angle: 0 };
+    return { x: rightTailX()+(s-kEnd), y: LCY(), angle: 0 };
   }
 
   // Inside knot
@@ -148,7 +173,7 @@ function pathPt(s) {
   if (ks < BLEND) {
     const t = ks / BLEND; // 0=tail, 1=knot
     const ease = t * t * (3 - 2*t); // smoothstep
-    const tailPt = { x: leftTailX()+s, y: CY(), angle: 0 };
+    const tailPt = { x: leftTailX()+s, y: LCY(), angle: 0 };
     return {
       x: tailPt.x + (rawPt.x - tailPt.x) * ease,
       y: tailPt.y + (rawPt.y - tailPt.y) * ease,
@@ -161,7 +186,7 @@ function pathPt(s) {
   if (distFromEnd < BLEND) {
     const t = distFromEnd / BLEND; // 0=tail, 1=knot
     const ease = t * t * (3 - 2*t);
-    const tailPt = { x: rightTailX()+(s-kEnd), y: CY(), angle: 0 };
+    const tailPt = { x: rightTailX()+(s-kEnd), y: LCY(), angle: 0 };
     return {
       x: tailPt.x + (rawPt.x - tailPt.x) * ease,
       y: tailPt.y + (rawPt.y - tailPt.y) * ease,
@@ -337,20 +362,29 @@ function drawAll(scale) {
 
 // ── INTERACTION ───────────────────────────────────────────────────────────────
 let isDragging = false;
-let tailDrag = null, tailDragX0 = 0, tailDragTight0 = 1.0;
+let tailDrag = null, tailDragOrigin = 0, tailDragTight0 = 1.0;
 let dragLastX = 0;
 
 function cxy(e) {
   const r = canvas.getBoundingClientRect();
-  return { x: e.clientX-r.left, y: e.clientY-r.top };
+  let x = e.clientX - r.left;
+  let y = e.clientY - r.top;
+  if (isPortrait()) {
+    // Inverse of the 90° clockwise rotation applied in beginFrame
+    // rotate 90° counter-clockwise around canvas centre
+    const ox = x - W()/2, oy = y - H()/2;
+    x = H()/2 + oy;
+    y = W()/2 - ox;
+  }
+  return { x, y };
 }
 
 function hitTest(mx, my) {
-  if (Math.abs(my-CY()) < 22) {
+  if (Math.abs(my-LCY()) < 22) {
     if (mx >= MARGIN && mx <= leftTailX()+leftTailW()) return { type:'tail', side:'left' };
     if (mx >= rightTailX() && mx <= rightTailX()+rightTailW()) return { type:'tail', side:'right' };
   }
-  const dist = Math.sqrt((mx-CX())**2+(my-CY())**2);
+  const dist = Math.sqrt((mx-LCX())**2+(my-LCY())**2);
   if (dist < currentR()*1.35) return { type:'knot' };
   return null;
 }
@@ -361,7 +395,10 @@ canvas.addEventListener('pointerdown', e => {
   const hit = hitTest(x, y);
   if (!hit) return;
   if (hit.type === 'tail') {
-    tailDrag = hit.side; tailDragX0 = e.clientX; tailDragTight0 = tightness;
+    tailDrag = hit.side;
+    // In portrait, tail drag axis is Y (client); in landscape, X
+    tailDragOrigin = isPortrait() ? e.clientY : e.clientX;
+    tailDragTight0 = tightness;
   } else {
     isDragging = true; dragLastX = e.clientX;
   }
@@ -370,16 +407,17 @@ canvas.addEventListener('pointerdown', e => {
 
 canvas.addEventListener('pointermove', e => {
   if (tailDrag) {
-    const dx = e.clientX - tailDragX0;
-    const pull = tailDrag === 'left' ? -dx : dx;
+    const delta = isPortrait()
+      ? e.clientY - tailDragOrigin   // portrait: drag up/down
+      : e.clientX - tailDragOrigin;  // landscape: drag left/right
+    // left/top tail pulled outward = negative delta; right/bottom = positive
+    const pull = tailDrag === 'left' ? -delta : delta;
     tgtTight = Math.max(0.02, Math.min(1.0, tailDragTight0 + pull/200));
     return;
   }
   if (!isDragging) return;
   const { x, y } = cxy(e);
-  const dx = e.clientX - dragLastX;
-  // Don't slide — loosening only
-  const dist = Math.sqrt((x-CX())**2+(y-CY())**2);
+  const dist = Math.sqrt((x-LCX())**2+(y-LCY())**2);
   const looseness = Math.min(1, Math.max(0, (dist-R_TIGHT*0.3)/(R_LOOSE*1.4-R_TIGHT*0.3)));
   tgtTight = Math.min(tgtTight, 1-looseness*0.99);
   dragLastX = e.clientX;
@@ -392,20 +430,19 @@ canvas.addEventListener('pointerup', () => {
 
 // ── LOOP ──────────────────────────────────────────────────────────────────────
 function tick() {
-  ctx.clearRect(0, 0, W(), H());
+  beginFrame();
   tightness = Math.max(0.02, Math.min(1.0, tightness + (tgtTight-tightness)*0.018));
 
-  _lastScale = -1; // invalidate cache — path length changes with tightness
+  _lastScale = -1;
   const scale = getScale();
 
   if (!initialised) {
-    // pathOffset = 0 means text starts at left edge of canvas.
-    // The text is scaled to fill exactly, so this is correct.
     pathOffset = 0;
     initialised = true;
   }
 
   drawAll(scale);
+  endFrame();
   requestAnimationFrame(tick);
 }
 tick();
