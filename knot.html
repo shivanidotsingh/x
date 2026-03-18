@@ -423,6 +423,12 @@ canvas.addEventListener('pointermove', e => {
   dragLastX = e.clientX;
 });
 
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY * 0.0008;
+  tgtTight = Math.max(0.02, Math.min(1.0, tgtTight + delta));
+}, { passive: false });
+
 canvas.addEventListener('pointerup', () => {
   isDragging = false; tailDrag = null;
   canvas.style.cursor = 'grab';
