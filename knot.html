@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>wicked problems</title>
+<title>wicked</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥨</text></svg>">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,29 +28,19 @@ window.addEventListener('resize', () => { resize(); initialised = false; });
 
 const W = () => canvas.offsetWidth;
 const H = () => canvas.offsetHeight;
-const CX = () => W() / 2;
-const CY = () => H() / 2;
-
-// Portrait mode: rotate the whole canvas 90° so tails go top/bottom
 const isPortrait = () => W() < H();
 
-// When portrait, we draw into a rotated coordinate space.
-// From the knot's perspective, everything is the same — horizontal tails,
-// horizontal centre line. We just rotate the canvas before drawing.
 function beginFrame() {
   ctx.clearRect(0, 0, W(), H());
   ctx.save();
   if (isPortrait()) {
-    // Rotate 90° clockwise around canvas centre
     ctx.translate(W()/2, H()/2);
     ctx.rotate(Math.PI / 2);
     ctx.translate(-H()/2, -W()/2);
-    // Now drawing space is H wide × W tall (landscape coordinates)
   }
 }
 function endFrame() { ctx.restore(); }
 
-// In portrait mode, the "logical" canvas is H wide × W tall
 function LW() { return isPortrait() ? H() : W(); }
 function LH() { return isPortrait() ? W() : H(); }
 function LCX() { return LW() / 2; }
@@ -64,9 +54,6 @@ const PHRASE_SEP = 18;
 
 function toSC(s) { return s.toUpperCase(); }
 
-// ALL phrases — the entire string, tails included.
-// Left tail = first phrase, right tail = last phrase.
-// Everything is one continuous sequence on the path.
 const allPhrases = [
   "Global poverty and economic inequality",
   "Climate change",
@@ -87,17 +74,12 @@ const allPhrases = [
 const R_TIGHT = 115, R_LOOSE = 340;
 
 function knotXY(t, R) {
-  // Add a phase offset so it starts in a more asymmetric position
   const phi = 5*t + 0.8, theta = 7*t + 1.3;
   const r = R*0.52 + R*0.48*Math.cos(theta);
-  // Taller: increase vertical scale, reduce horizontal
   let x = LCX() + r*Math.cos(phi)*0.82;
   let y = LCY() + r*Math.sin(phi)*0.92 + R*0.48*Math.sin(theta)*0.42;
-  // Asymmetric wobble with non-5-fold harmonics
-  x += R * 0.07 * Math.sin(3*t + 0.7) * Math.cos(2*t + 1.1);
-  y += R * 0.09 * Math.sin(11*t + 2.3) * Math.cos(4*t + 0.5);
-  x += R * 0.05 * Math.cos(7*t + 1.8);
-  y += R * 0.06 * Math.sin(9*t + 0.3);
+  x += R * 0.06 * Math.sin(3*t + 0.7);
+  y += R * 0.09 * Math.sin(3*t + 2.1);
   return { x, y };
 }
 
@@ -150,8 +132,7 @@ function leftTailX()  { return MARGIN; }
 function rightTailX() { return LCX()+currentR(); }
 function totalPathLen() { return leftTailW() + knotLen() + rightTailW(); }
 
-// Full path: s=0 at left edge, s=totalPathLen() at right edge
-const BLEND = 60; // px of blending zone at each tail junction
+const BLEND = 60;
 
 function pathPt(s) {
   const ltw = leftTailW();
@@ -161,24 +142,16 @@ function pathPt(s) {
   if (s <= 0) return { x: leftTailX(), y: LCY(), angle: 0 };
   if (s >= ltw + kl + rightTailW()) return { x: rightTailX()+rightTailW(), y: LCY(), angle: 0 };
 
-  if (s <= ltw) {
-    // Left tail — purely horizontal
-    return { x: leftTailX()+s, y: LCY(), angle: 0 };
-  }
+  if (s <= ltw) return { x: leftTailX()+s, y: LCY(), angle: 0 };
 
-  if (s >= kEnd) {
-    // Right tail — purely horizontal
-    return { x: rightTailX()+(s-kEnd), y: LCY(), angle: 0 };
-  }
+  if (s >= kEnd) return { x: rightTailX()+(s-kEnd), y: LCY(), angle: 0 };
 
-  // Inside knot
-  const ks = s - ltw; // arc-length within knot
+  const ks = s - ltw;
   const rawPt = knotPt(ks/kl*KL.len);
 
-  // Blend near entry (left side of knot)
   if (ks < BLEND) {
-    const t = ks / BLEND; // 0=tail, 1=knot
-    const ease = t * t * (3 - 2*t); // smoothstep
+    const t = ks / BLEND;
+    const ease = t * t * (3 - 2*t);
     const tailPt = { x: leftTailX()+s, y: LCY(), angle: 0 };
     return {
       x: tailPt.x + (rawPt.x - tailPt.x) * ease,
@@ -187,10 +160,9 @@ function pathPt(s) {
     };
   }
 
-  // Blend near exit (right side of knot)
   const distFromEnd = kl - ks;
   if (distFromEnd < BLEND) {
-    const t = distFromEnd / BLEND; // 0=tail, 1=knot
+    const t = distFromEnd / BLEND;
     const ease = t * t * (3 - 2*t);
     const tailPt = { x: rightTailX()+(s-kEnd), y: LCY(), angle: 0 };
     return {
@@ -203,11 +175,9 @@ function pathPt(s) {
   return rawPt;
 }
 
-// ── CHARACTER SEQUENCE ────────────────────────────────────────────────────────
 ctx.font = FONT_SC;
 function getCW(ch) { return ctx.measureText(ch).width; }
 
-// Build flat list of all chars with cumulative width offsets
 let charSeq = [];
 function buildCharSeq() {
   charSeq = [];
@@ -228,37 +198,18 @@ function totalTextW() {
   return last.cumW + getCW(last.ch);
 }
 
-// pathOffset: where on the path (arc-length) the first character sits.
-// We compute this so the text fills the path — centred.
-// On init, set pathOffset so the text is distributed across the full path.
 let pathOffset = 0;
 let initialised = false;
 
-// Scale factor: stretch/compress the text spacing so it fills the path exactly.
-// We compute a per-frame scale so text always fills path regardless of tightness.
 function getScale() {
   const pathLen = totalPathLen();
   const textLen = totalTextW();
-  // Scale spacing (not glyph widths) to fill path
-  // Total spacing = textLen - sum of glyph widths
-  // We want: sum(glyphW) + scale*sum(gaps) = pathLen
   const sumGlyphs = charSeq.reduce((a,c)=>a+getCW(c.ch),0);
-  const sumGaps = textLen - sumGlyphs; // at scale=1
+  const sumGaps = textLen - sumGlyphs;
   if (sumGaps <= 0) return 1;
   return Math.max(0.3, (pathLen - sumGlyphs) / sumGaps);
 }
 
-// Get arc-length position of character i given current scale
-function charS(i, scale) {
-  const c = charSeq[i];
-  // Recompute cumW with scale applied to gaps
-  // cumW at scale=1 = c.cumW
-  // We need to know how much of cumW is glyphs vs gaps
-  // Simpler: rebuild scaled positions
-  return scaledPositions(scale)[i];
-}
-
-// Cache scaled positions
 let _lastScale = -1, _scaledPos = [];
 function scaledPositions(scale) {
   if (Math.abs(scale - _lastScale) < 0.001) return _scaledPos;
@@ -273,9 +224,6 @@ function scaledPositions(scale) {
     }
     if (pi < allPhrases.length-1) pos += PHRASE_SEP * scale - LETTER_SP * scale;
   });
-  // Clamp: ensure last char ends exactly at totalPathLen()
-  // by nudging scale so total fits. We do this by computing
-  // the actual end and adjusting _scaledPos linearly.
   const pathLen = totalPathLen();
   const lastChar = charSeq[charSeq.length-1];
   const lastEnd = _scaledPos[_scaledPos.length-1] + getCW(lastChar.ch);
@@ -286,7 +234,6 @@ function scaledPositions(scale) {
   return _scaledPos;
 }
 
-// ── DRAW ──────────────────────────────────────────────────────────────────────
 function drawAll(scale) {
   ctx.font = FONT_SC;
   ctx.fillStyle = FG.replace('ALPHA','0.85');
@@ -294,21 +241,16 @@ function drawAll(scale) {
 
   const positions = scaledPositions(scale);
   const pathLen = totalPathLen();
-
-  // Group by phrase for flip logic
   let curPi = -1, phraseGroup = [];
 
   function flushGroup() {
     if (!phraseGroup.length) return;
-
-    // Sample midpoint of phrase to decide orientation
     const first = phraseGroup[0];
     const last  = phraseGroup[phraseGroup.length-1];
     const firstS = pathOffset + positions[first.idx];
     const lastS  = pathOffset + positions[last.idx] + getCW(last.ch);
     const midS   = (firstS + lastS) / 2;
 
-    // Skip if entirely off path
     if (lastS < 0 || firstS > pathLen) { phraseGroup = []; return; }
 
     const midPt = pathPt(Math.max(0, Math.min(pathLen, midS)));
@@ -318,12 +260,10 @@ function drawAll(scale) {
     const leftward = Math.abs(ang) > Math.PI/2;
 
     if (!leftward) {
-      // Normal direction: draw chars in order
       for (const { ch, idx } of phraseGroup) {
         const s = pathOffset + positions[idx] + getCW(ch)/2;
         if (s < -20 || s > pathLen+20) continue;
-        const sc = Math.max(0, Math.min(pathLen, s));
-        const pt = pathPt(sc);
+        const pt = pathPt(Math.max(0, Math.min(pathLen, s)));
         let a = pt.angle;
         while (a >  Math.PI) a -= Math.PI*2;
         while (a < -Math.PI) a += Math.PI*2;
@@ -334,18 +274,14 @@ function drawAll(scale) {
         ctx.restore();
       }
     } else {
-      // Leftward: mirror character positions within phrase, rotate +PI
       const phraseStartS = firstS;
-      const phraseEndS   = lastS;
-      const phraseW      = phraseEndS - phraseStartS;
+      const phraseW = lastS - firstS;
       for (const { ch, idx } of phraseGroup) {
-        const charStart = pathOffset + positions[idx];
-        const localPos  = charStart - phraseStartS;
-        const mirrored  = phraseW - localPos - getCW(ch);
+        const localPos = (pathOffset + positions[idx]) - phraseStartS;
+        const mirrored = phraseW - localPos - getCW(ch);
         const s = phraseStartS + mirrored + getCW(ch)/2;
         if (s < -20 || s > pathLen+20) continue;
-        const sc = Math.max(0, Math.min(pathLen, s));
-        const pt = pathPt(sc);
+        const pt = pathPt(Math.max(0, Math.min(pathLen, s)));
         let a = pt.angle;
         while (a >  Math.PI) a -= Math.PI*2;
         while (a < -Math.PI) a += Math.PI*2;
@@ -366,7 +302,6 @@ function drawAll(scale) {
   flushGroup();
 }
 
-// ── INTERACTION ───────────────────────────────────────────────────────────────
 let isDragging = false;
 let tailDrag = null, tailDragOrigin = 0, tailDragTight0 = 1.0;
 let dragLastX = 0;
@@ -376,8 +311,6 @@ function cxy(e) {
   let x = e.clientX - r.left;
   let y = e.clientY - r.top;
   if (isPortrait()) {
-    // Inverse of the 90° clockwise rotation applied in beginFrame
-    // rotate 90° counter-clockwise around canvas centre
     const ox = x - W()/2, oy = y - H()/2;
     x = H()/2 + oy;
     y = W()/2 - ox;
@@ -402,7 +335,6 @@ canvas.addEventListener('pointerdown', e => {
   if (!hit) return;
   if (hit.type === 'tail') {
     tailDrag = hit.side;
-    // In portrait, tail drag axis is Y (client); in landscape, X
     tailDragOrigin = isPortrait() ? e.clientY : e.clientX;
     tailDragTight0 = tightness;
   } else {
@@ -413,10 +345,7 @@ canvas.addEventListener('pointerdown', e => {
 
 canvas.addEventListener('pointermove', e => {
   if (tailDrag) {
-    const delta = isPortrait()
-      ? e.clientY - tailDragOrigin   // portrait: drag up/down
-      : e.clientX - tailDragOrigin;  // landscape: drag left/right
-    // left/top tail pulled outward = negative delta; right/bottom = positive
+    const delta = isPortrait() ? e.clientY - tailDragOrigin : e.clientX - tailDragOrigin;
     const pull = tailDrag === 'left' ? -delta : delta;
     tgtTight = Math.max(0.02, Math.min(1.0, tailDragTight0 + pull/200));
     return;
@@ -431,8 +360,7 @@ canvas.addEventListener('pointermove', e => {
 
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  const delta = e.deltaY * 0.0008;
-  tgtTight = Math.max(0.02, Math.min(1.0, tgtTight + delta));
+  tgtTight = Math.max(0.02, Math.min(1.0, tgtTight + e.deltaY * 0.0008));
 }, { passive: false });
 
 canvas.addEventListener('pointerup', () => {
@@ -440,19 +368,12 @@ canvas.addEventListener('pointerup', () => {
   canvas.style.cursor = 'grab';
 });
 
-// ── LOOP ──────────────────────────────────────────────────────────────────────
 function tick() {
   beginFrame();
   tightness = Math.max(0.02, Math.min(1.0, tightness + (tgtTight-tightness)*0.18));
-
   _lastScale = -1;
   const scale = getScale();
-
-  if (!initialised) {
-    pathOffset = 0;
-    initialised = true;
-  }
-
+  if (!initialised) { pathOffset = 0; initialised = true; }
   drawAll(scale);
   endFrame();
   requestAnimationFrame(tick);
