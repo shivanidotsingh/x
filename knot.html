@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wicked</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100vh; overflow: hidden; background: #f5f4f0; }
+#c { display: block; width: 100%; height: 100vh; cursor: grab; }
+</style>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥨</text></svg>">
+
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const DPR = devicePixelRatio || 1;
+
+function resize() {
+  canvas.width = canvas.offsetWidth * DPR;
+  canvas.height = canvas.offsetHeight * DPR;
+  ctx.scale(DPR, DPR);
+}
+resize();
+window.addEventListener('resize', () => { resize(); initialised = false; });
+
+const W = () => canvas.offsetWidth;
+const H = () => canvas.offsetHeight;
+const CX = () => W() / 2;
+const CY = () => H() / 2;
+
+const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const FG = isDark ? 'rgba(235,230,220,ALPHA)' : 'rgba(22,20,18,ALPHA)';
+const FONT_SC = '500 10px -apple-system, sans-serif';
+const LETTER_SP = 2.2;
+const PHRASE_SEP = 18;
+
+function toSC(s) { return s.toUpperCase(); }
+
+// ALL phrases — the entire string, tails included.
+// Left tail = first phrase, right tail = last phrase.
+// Everything is one continuous sequence on the path.
+const allPhrases = [
+  "Global poverty and economic inequality",
+  "Climate change",
+  "Gender-based violence and domestic abuse",
+  "Labor exploitation",
+  "Refugee crises and forced migration",
+  "Systemic racism and racial injustice",
+  "Healthcare accessibility and affordability",
+  "Access to Education",
+  "Energy sustainability and transition",
+  "Aging population care and support",
+  "Youth unemployment",
+  "Artificial intelligence ethics and governance",
+  "Organized crime and corruption",
+  "Misinformation and disinformation",
+].map(toSC);
+
+const R_TIGHT = 115, R_LOOSE = 340;
+
+function knotXY(t, R) {
+  const phi = 5*t, theta = 7*t;
+  const r = R*0.55 + R*0.45*Math.cos(theta);
+  return {
+    x: CX() + r*Math.cos(phi),
+    y: CY() + r*Math.sin(phi)*0.70 + R*0.45*Math.sin(theta)*0.30
+  };
+}
+
+function buildKnot(R, N=8000) {
+  const pts = [];
+  for (let i = 0; i <= N; i++) pts.push(knotXY(i/N*Math.PI*2, R));
+  const arc = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x-pts[i-1].x, dy = pts[i].y-pts[i-1].y;
+    arc.push(arc[i-1] + Math.sqrt(dx*dx+dy*dy));
+  }
+  return { pts, arc, len: arc[arc.length-1] };
+}
+
+const KT = buildKnot(R_TIGHT), KL = buildKnot(R_LOOSE);
+let tightness = 1.0, tgtTight = 1.0;
+
+function knotPtAtS(knot, s) {
+  const { pts, arc } = knot;
+  s = ((s % knot.len) + knot.len) % knot.len;
+  let lo = 0, hi = pts.length-1;
+  while (lo < hi-1) { const m=(lo+hi)>>1; arc[m]<=s?(lo=m):(hi=m); }
+  const t = (s-arc[lo])/(arc[hi]-arc[lo]||1);
+  const ni = Math.min(lo+5, pts.length-1);
+  return {
+    x: pts[lo].x + t*(pts[hi].x-pts[lo].x),
+    y: pts[lo].y + t*(pts[hi].y-pts[lo].y),
+    angle: Math.atan2(pts[ni].y-pts[lo].y, pts[ni].x-pts[lo].x)
+  };
+}
+
+function knotPt(s) {
+  const k = 1-tightness;
+  const pl = knotPtAtS(KL, s);
+  const pt = knotPtAtS(KT, s/KL.len*KT.len);
+  return {
+    x: pt.x+(pl.x-pt.x)*k,
+    y: pt.y+(pl.y-pt.y)*k,
+    angle: pt.angle+(pl.angle-pt.angle)*k
+  };
+}
+
+function knotLen() { return KT.len+(KL.len-KT.len)*(1-tightness); }
+
+const MARGIN = 10;
+function currentR()   { return R_TIGHT+(R_LOOSE-R_TIGHT)*(1-tightness); }
+function leftTailW()  { return CX()-currentR()-MARGIN; }
+function rightTailW() { return CX()-currentR()-MARGIN; }
+function leftTailX()  { return MARGIN; }
+function rightTailX() { return CX()+currentR(); }
+function totalPathLen() { return leftTailW() + knotLen() + rightTailW(); }
+
+// Full path: s=0 at left edge, s=totalPathLen() at right edge
+function pathPt(s) {
+  const ltw = leftTailW();
+  if (s <= ltw) return { x: leftTailX()+s, y: CY(), angle: 0 };
+  s -= ltw;
+  const kl = knotLen();
+  if (s <= kl) return knotPt(s/kl*KL.len);
+  s -= kl;
+  return { x: rightTailX()+s, y: CY(), angle: 0 };
+}
+
+// ── CHARACTER SEQUENCE ────────────────────────────────────────────────────────
+ctx.font = FONT_SC;
+function getCW(ch) { return ctx.measureText(ch).width; }
+
+// Build flat list of all chars with cumulative width offsets
+let charSeq = [];
+function buildCharSeq() {
+  charSeq = [];
+  let cumW = 0;
+  allPhrases.forEach((phrase, pi) => {
+    for (const ch of phrase) {
+      charSeq.push({ ch, pi, cumW });
+      cumW += getCW(ch) + LETTER_SP;
+    }
+    if (pi < allPhrases.length-1) cumW += PHRASE_SEP - LETTER_SP;
+  });
+}
+buildCharSeq();
+
+function totalTextW() {
+  if (!charSeq.length) return 0;
+  const last = charSeq[charSeq.length-1];
+  return last.cumW + getCW(last.ch);
+}
+
+// pathOffset: where on the path (arc-length) the first character sits.
+// We compute this so the text fills the path — centred.
+// On init, set pathOffset so the text is distributed across the full path.
+let pathOffset = 0;
+let initialised = false;
+
+// Scale factor: stretch/compress the text spacing so it fills the path exactly.
+// We compute a per-frame scale so text always fills path regardless of tightness.
+function getScale() {
+  const pathLen = totalPathLen();
+  const textLen = totalTextW();
+  // Scale spacing (not glyph widths) to fill path
+  // Total spacing = textLen - sum of glyph widths
+  // We want: sum(glyphW) + scale*sum(gaps) = pathLen
+  const sumGlyphs = charSeq.reduce((a,c)=>a+getCW(c.ch),0);
+  const sumGaps = textLen - sumGlyphs; // at scale=1
+  if (sumGaps <= 0) return 1;
+  return Math.max(0.3, (pathLen - sumGlyphs) / sumGaps);
+}
+
+// Get arc-length position of character i given current scale
+function charS(i, scale) {
+  const c = charSeq[i];
+  // Recompute cumW with scale applied to gaps
+  // cumW at scale=1 = c.cumW
+  // We need to know how much of cumW is glyphs vs gaps
+  // Simpler: rebuild scaled positions
+  return scaledPositions(scale)[i];
+}
+
+// Cache scaled positions
+let _lastScale = -1, _scaledPos = [];
+function scaledPositions(scale) {
+  if (Math.abs(scale - _lastScale) < 0.001) return _scaledPos;
+  _lastScale = scale;
+  _scaledPos = [];
+  let pos = 0;
+  allPhrases.forEach((phrase, pi) => {
+    for (let i = 0; i < phrase.length; i++) {
+      _scaledPos.push(pos);
+      const ch = phrase[i];
+      pos += getCW(ch) + LETTER_SP * scale;
+    }
+    if (pi < allPhrases.length-1) pos += PHRASE_SEP * scale - LETTER_SP * scale;
+  });
+  return _scaledPos;
+}
+
+// ── DRAW ──────────────────────────────────────────────────────────────────────
+function drawAll(scale) {
+  ctx.font = FONT_SC;
+  ctx.fillStyle = FG.replace('ALPHA','0.85');
+  ctx.textBaseline = 'alphabetic';
+
+  const positions = scaledPositions(scale);
+  const pathLen = totalPathLen();
+
+  // Group by phrase for flip logic
+  let curPi = -1, phraseGroup = [];
+
+  function flushGroup() {
+    if (!phraseGroup.length) return;
+
+    // Sample midpoint of phrase to decide orientation
+    const first = phraseGroup[0];
+    const last  = phraseGroup[phraseGroup.length-1];
+    const firstS = pathOffset + positions[first.idx];
+    const lastS  = pathOffset + positions[last.idx] + getCW(last.ch);
+    const midS   = (firstS + lastS) / 2;
+
+    // Skip if entirely off path
+    if (lastS < 0 || firstS > pathLen) { phraseGroup = []; return; }
+
+    const midPt = pathPt(Math.max(0, Math.min(pathLen, midS)));
+    let ang = midPt.angle;
+    while (ang >  Math.PI) ang -= Math.PI*2;
+    while (ang < -Math.PI) ang += Math.PI*2;
+    const leftward = Math.abs(ang) > Math.PI/2;
+
+    if (!leftward) {
+      // Normal direction: draw chars in order
+      for (const { ch, idx } of phraseGroup) {
+        const s = pathOffset + positions[idx] + getCW(ch)/2;
+        if (s < -20 || s > pathLen+20) continue;
+        const sc = Math.max(0, Math.min(pathLen, s));
+        const pt = pathPt(sc);
+        let a = pt.angle;
+        while (a >  Math.PI) a -= Math.PI*2;
+        while (a < -Math.PI) a += Math.PI*2;
+        ctx.save();
+        ctx.translate(pt.x, pt.y);
+        ctx.rotate(a);
+        ctx.fillText(ch, -getCW(ch)/2, 4);
+        ctx.restore();
+      }
+    } else {
+      // Leftward: mirror character positions within phrase, rotate +PI
+      const phraseStartS = firstS;
+      const phraseEndS   = lastS;
+      const phraseW      = phraseEndS - phraseStartS;
+      for (const { ch, idx } of phraseGroup) {
+        const charStart = pathOffset + positions[idx];
+        const localPos  = charStart - phraseStartS;
+        const mirrored  = phraseW - localPos - getCW(ch);
+        const s = phraseStartS + mirrored + getCW(ch)/2;
+        if (s < -20 || s > pathLen+20) continue;
+        const sc = Math.max(0, Math.min(pathLen, s));
+        const pt = pathPt(sc);
+        let a = pt.angle;
+        while (a >  Math.PI) a -= Math.PI*2;
+        while (a < -Math.PI) a += Math.PI*2;
+        ctx.save();
+        ctx.translate(pt.x, pt.y);
+        ctx.rotate(a + Math.PI);
+        ctx.fillText(ch, -getCW(ch)/2, 4);
+        ctx.restore();
+      }
+    }
+    phraseGroup = [];
+  }
+
+  charSeq.forEach(({ ch, pi }, idx) => {
+    if (pi !== curPi) { flushGroup(); curPi = pi; }
+    phraseGroup.push({ ch, idx });
+  });
+  flushGroup();
+}
+
+// ── INTERACTION ───────────────────────────────────────────────────────────────
+let isDragging = false;
+let tailDrag = null, tailDragX0 = 0, tailDragTight0 = 1.0;
+let dragLastX = 0;
+
+function cxy(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX-r.left, y: e.clientY-r.top };
+}
+
+function hitTest(mx, my) {
+  if (Math.abs(my-CY()) < 22) {
+    if (mx >= MARGIN && mx <= leftTailX()+leftTailW()) return { type:'tail', side:'left' };
+    if (mx >= rightTailX() && mx <= rightTailX()+rightTailW()) return { type:'tail', side:'right' };
+  }
+  const dist = Math.sqrt((mx-CX())**2+(my-CY())**2);
+  if (dist < currentR()*1.35) return { type:'knot' };
+  return null;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  canvas.style.cursor = 'grabbing';
+  const { x, y } = cxy(e);
+  const hit = hitTest(x, y);
+  if (!hit) return;
+  if (hit.type === 'tail') {
+    tailDrag = hit.side; tailDragX0 = e.clientX; tailDragTight0 = tightness;
+  } else {
+    isDragging = true; dragLastX = e.clientX;
+  }
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener('pointermove', e => {
+  if (tailDrag) {
+    const dx = e.clientX - tailDragX0;
+    const pull = tailDrag === 'left' ? -dx : dx;
+    tgtTight = Math.max(0.02, Math.min(1.0, tailDragTight0 + pull/200));
+    return;
+  }
+  if (!isDragging) return;
+  const { x, y } = cxy(e);
+  const dx = e.clientX - dragLastX;
+  // Don't slide — loosening only
+  const dist = Math.sqrt((x-CX())**2+(y-CY())**2);
+  const looseness = Math.min(1, Math.max(0, (dist-R_TIGHT*0.3)/(R_LOOSE*1.4-R_TIGHT*0.3)));
+  tgtTight = Math.min(tgtTight, 1-looseness*0.99);
+  dragLastX = e.clientX;
+});
+
+canvas.addEventListener('pointerup', () => {
+  isDragging = false; tailDrag = null;
+  canvas.style.cursor = 'grab';
+});
+
+// ── LOOP ──────────────────────────────────────────────────────────────────────
+function tick() {
+  ctx.clearRect(0, 0, W(), H());
+  tightness = Math.max(0.02, Math.min(1.0, tightness + (tgtTight-tightness)*0.018));
+
+  const scale = getScale();
+
+  if (!initialised) {
+    // pathOffset = 0 means text starts at left edge of canvas.
+    // The text is scaled to fill exactly, so this is correct.
+    pathOffset = 0;
+    initialised = true;
+  }
+
+  drawAll(scale);
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>
