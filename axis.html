@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Epistemic Compass</title>
+<style>
+  body { font-family: Inter, sans-serif; margin: 0; display: flex; height: 100vh; }
+  #left { width: 320px; padding: 20px; border-right: 1px solid #ccc; }
+  #canvas { flex: 1; position: relative; }
+  textarea { width: 100%; height: 80px; }
+  input[type=range] { width: 100%; }
+  button { margin-top: 10px; width: 100%; }
+
+  .point {
+    position: absolute;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+  }
+
+  .label {
+    position: absolute;
+    font-size: 12px;
+    transform: translate(6px, 6px);
+    max-width: 150px;
+  }
+
+  .axis { position: absolute; background: #000; }
+  #x-axis { height: 1px; width: 100%; top: 50%; }
+  #y-axis { width: 1px; height: 100%; left: 50%; }
+
+  .axis-label {
+    position: absolute;
+    font-size: 12px;
+    opacity: 0.7;
+  }
+
+  #top { top: 5px; left: 50%; transform: translateX(-50%); }
+  #bottom { bottom: 5px; left: 50%; transform: translateX(-50%); }
+  #left-label { left: 5px; top: 50%; transform: translateY(-50%); }
+  #right-label { right: 5px; top: 50%; transform: translateY(-50%); }
+
+  .tooltip {
+    position: absolute;
+    background: #000;
+    color: #fff;
+    padding: 6px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="left">
+  <h2>Epistemic Compass</h2>
+  <textarea id="statement" placeholder="Enter a statement..."></textarea>
+  <label>Certainty</label>
+  <input type="range" id="certainty" min="0" max="100" value="50" />
+  <button onclick="addPoint()">Add</button>
+  <div id="feedback"></div>
+</div>
+<div id="canvas">
+  <div id="x-axis" class="axis"></div>
+  <div id="y-axis" class="axis"></div>
+
+  <div id="top" class="axis-label">Reason</div>
+  <div id="bottom" class="axis-label">Faith</div>
+  <div id="left-label" class="axis-label">Imagination</div>
+  <div id="right-label" class="axis-label">Intuition</div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+let tooltip;
+
+function classify(text) {
+  text = text.toLowerCase();
+
+  let x = 0;
+  let y = 0;
+
+  if (text.match(/data|evidence|analysis|study|numbers|research/)) y += 0.6;
+  if (text.match(/feel|believe|trust|assume|guess/)) y -= 0.6;
+
+  if (text.match(/might|could|maybe|future|hypothesis/)) x -= 0.6;
+  if (text.match(/observed|saw|users said|experience|found/)) x += 0.6;
+
+  // small random nudge so things don't stack
+  x += (Math.random() - 0.5) * 0.2;
+  y += (Math.random() - 0.5) * 0.2;
+
+  x = Math.max(-1, Math.min(1, x));
+  y = Math.max(-1, Math.min(1, y));
+
+  return { x, y };
+}
+
+function getQuadrant(x, y) {
+  if (x < 0 && y > 0) return "Speculation";
+  if (x > 0 && y > 0) return "Knowledge";
+  if (x < 0 && y < 0) return "Assumption";
+  if (x > 0 && y < 0) return "Bias";
+  return "Unclear";
+}
+
+function addPoint() {
+  const text = document.getElementById('statement').value;
+  const certainty = document.getElementById('certainty').value;
+  if (!text) return;
+
+  const { x, y } = classify(text);
+  createPoint(x, y, text, certainty);
+
+  document.getElementById('statement').value = '';
+}
+
+function createPoint(x, y, text, certainty) {
+  const rect = canvas.getBoundingClientRect();
+
+  const point = document.createElement('div');
+  point.className = 'point';
+  point.dataset.x = x;
+  point.dataset.y = y;
+  point.dataset.text = text;
+
+  const size = 8 + certainty / 10;
+  point.style.width = point.style.height = size + 'px';
+  point.style.background = 'black';
+  point.style.opacity = certainty / 100;
+
+  positionPoint(point, x, y);
+
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.innerText = text;
+
+  canvas.appendChild(point);
+  canvas.appendChild(label);
+
+  updateLabelPosition(point, label);
+
+  // tooltip
+  point.addEventListener('click', (e) => {
+    showTooltip(e.pageX, e.pageY, text, getQuadrant(point.dataset.x, point.dataset.y));
+  });
+
+  // drag
+  let isDragging = false;
+
+  point.addEventListener('mousedown', () => {
+    isDragging = true;
+    point.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    const rect = canvas.getBoundingClientRect();
+    let nx = (e.clientX - rect.left) / rect.width * 2 - 1;
+    let ny = -((e.clientY - rect.top) / rect.height * 2 - 1);
+
+    nx = Math.max(-1, Math.min(1, nx));
+    ny = Math.max(-1, Math.min(1, ny));
+
+    point.dataset.x = nx;
+    point.dataset.y = ny;
+
+    positionPoint(point, nx, ny);
+    updateLabelPosition(point, label);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      point.style.cursor = 'grab';
+      const q = getQuadrant(point.dataset.x, point.dataset.y);
+      document.getElementById('feedback').innerText = "Now in: " + q;
+    }
+  });
+
+  const quadrant = getQuadrant(x, y);
+  document.getElementById('feedback').innerText = "Placed in: " + quadrant;
+}
+
+function positionPoint(point, x, y) {
+  const rect = canvas.getBoundingClientRect();
+  const px = rect.width / 2 + x * rect.width / 2;
+  const py = rect.height / 2 - y * rect.height / 2;
+
+  point.style.left = px + 'px';
+  point.style.top = py + 'px';
+}
+
+function updateLabelPosition(point, label) {
+  label.style.left = point.style.left;
+  label.style.top = point.style.top;
+}
+
+function showTooltip(x, y, text, quadrant) {
+  if (tooltip) tooltip.remove();
+
+  tooltip = document.createElement('div');
+  tooltip.className = 'tooltip';
+  tooltip.innerText = text + "\n→ " + quadrant;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+
+  document.body.appendChild(tooltip);
+
+  setTimeout(() => {
+    if (tooltip) tooltip.remove();
+  }, 2000);
+}
+</script>
+</body>
+</html>
