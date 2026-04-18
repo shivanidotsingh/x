@@ -12,11 +12,20 @@
   input[type=range] { width: 100%; }
   button { margin-top: 10px; width: 100%; }
 
+  .intro {
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.9;
+    margin-bottom: 16px;
+    padding: 0; /* align with header + inputs */
+  }
+
   .point {
     position: absolute;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     cursor: grab;
+    z-index: 3;
   }
 
   .label {
@@ -24,9 +33,13 @@
     font-size: 12px;
     transform: translate(6px, 6px);
     max-width: 150px;
+    background: white; /* prevent axis overlap */
+    padding: 2px 4px;
+    border-radius: 4px;
+    z-index: 2;
   }
 
-  .axis { position: absolute; background: #000; }
+  .axis { position: absolute; background: #000; z-index: 0; }
   #x-axis { height: 1px; width: 100%; top: 50%; }
   #y-axis { width: 1px; height: 100%; left: 50%; }
 
@@ -54,14 +67,22 @@
 </style>
 </head>
 <body>
+
 <div id="left">
-  <h2>Epistemic Compass</h2>
+  <h2 style="margin-top:0;">Epistemic Compass</h2>
+
+  <div class="intro">
+  This tool is about making sense of the world — noticing how you know what you know. It draws on the Theory of Knowledge (TOK) framework, which describes 8 ways of knowing: language, sense perception, emotion, reason, imagination, faith, intuition, and memory. Here, these are translated into two axes — vertical: Reason ↔ Faith; horizontal: Imagination ↔ Intuition.<br><br>
+  Add a statement, see where it lands, and move it if it doesn’t feel right.
+  </div>
+
   <textarea id="statement" placeholder="Enter a statement..."></textarea>
   <label>Certainty</label>
   <input type="range" id="certainty" min="0" max="100" value="50" />
   <button onclick="addPoint()">Add</button>
   <div id="feedback"></div>
 </div>
+
 <div id="canvas">
   <div id="x-axis" class="axis"></div>
   <div id="y-axis" class="axis"></div>
@@ -88,7 +109,6 @@ function classify(text) {
   if (text.match(/might|could|maybe|future|hypothesis/)) x -= 0.6;
   if (text.match(/observed|saw|users said|experience|found/)) x += 0.6;
 
-  // small random nudge so things don't stack
   x += (Math.random() - 0.5) * 0.2;
   y += (Math.random() - 0.5) * 0.2;
 
@@ -118,8 +138,6 @@ function addPoint() {
 }
 
 function createPoint(x, y, text, certainty) {
-  const rect = canvas.getBoundingClientRect();
-
   const point = document.createElement('div');
   point.className = 'point';
   point.dataset.x = x;
@@ -142,12 +160,10 @@ function createPoint(x, y, text, certainty) {
 
   updateLabelPosition(point, label);
 
-  // tooltip
   point.addEventListener('click', (e) => {
     showTooltip(e.pageX, e.pageY, text, getQuadrant(point.dataset.x, point.dataset.y));
   });
 
-  // drag
   let isDragging = false;
 
   point.addEventListener('mousedown', () => {
