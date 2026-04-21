@@ -9,16 +9,16 @@
 /* ── PALETTE from reference image ── */
 :root {
   /* backgrounds */
-  --teal:      #2a8f8f;   /* Pareidolia card */
-  --sage:      #b8c4b8;   /* Fatuous card */
-  --blush:     #f0c4cc;   /* Unctuous card */
-  --mauve:     #c4b0d0;   /* Capricious card */
-  --dusty-purple: #7a6890; /* Apocryphal card */
-  --seafoam:   #a8c4bc;   /* Conjecture card */
-  --cream:     #f5f2e8;   /* Prescient card */
-  --warm-grey: #d4d0c8;   /* general */
+  --teal:      #2a8f8f;   
+  --orange:    #f5945c;  
+  --blush:     #f0c4cc;   
+  --mauve:     #c4b0d0;  
+  --dusty-purple: #7a6890; 
+  --seafoam:   #a8c4bc;
+  --cream:     #f5f2e8; 
+  --warm-grey: #d4d0c8;
 
-  /* text accent colours per type (bold title colours from reference) */
+  /* text accent colours per type */
   --teal-text:    #2a7a6e;
   --red-text:     #c8382a;
   --pink-text:    #c87890;
@@ -28,8 +28,8 @@
 
   /* base */
   --page-bg:  #f5f2e8;
-  --ink:      #3a3530;
-  --ink-light:#7a7068;
+  --ink:      #A9A9A9;
+  --ink-light:#636363;
   --border:   rgba(58,53,48,0.12);
 }
 
@@ -89,7 +89,7 @@ body {
   color: var(--ink);
   margin-bottom: 6px;
 }
-.intro-title span { color: var(--teal-text); }
+
 .intro-sub {
   font-size: 0.85rem;
   color: var(--ink-light);
@@ -128,7 +128,7 @@ body {
 .tc-reflector { background: #c0c8d8; color: #4a5878;             }
 .tc-mover     { background: #d8c8b8; color: #8a5030;             }
 .tc-tender    { background: #d8bec8; color: #a84868;             }
-.tc-seeker    { background: #c8d0b8; color: #5a6838;             }
+.tc-seeker    { background: #f5945c; color: var(--orange-text);  }
 
 hr.intro-rule {
   border: none;
@@ -602,8 +602,9 @@ const RESULT_BG = {
   reflector: '#c0c8d8',
   mover:     '#d8c8b8',
   tender:    '#d8bec8',
-  seeker:    '#c8d0b8'
+  seeker:    '#f5945c'
 };
+  
 // title accent colours per type
 const RESULT_COLOR = {
   creator:   '#7a6890',
@@ -611,8 +612,9 @@ const RESULT_COLOR = {
   reflector: '#4a5878',
   mover:     '#8a5030',
   tender:    '#a84868',
-  seeker:    '#5a6838'
+  seeker:    '#d87840'
 };
+  
 // blend bar fill colours — slightly deeper versions
 const BAR_COLOR = {
   creator:   '#a890c0',
@@ -620,7 +622,7 @@ const BAR_COLOR = {
   reflector: '#7890b8',
   mover:     '#c09068',
   tender:    '#c87898',
-  seeker:    '#88a858'
+  seeker:    '#d87840'
 };
 // shadow name accent
 const SHADOW_COLOR = {
@@ -629,7 +631,7 @@ const SHADOW_COLOR = {
   reflector: '#90a8d0',
   mover:     '#d8a878',
   tender:    '#e090a8',
-  seeker:    '#a0c870'
+  seeker:    '#FA8072'
 };
 
 const TYPE_DATA = {
