@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Design Feedback Tool - UNICEF Innovation</title>
+    <title>Feedback Compass </title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Design Feedback Tool</h1>
-        <p class="subtitle">Get tailored questions for your feedback session</p>
+        <h1>Feedback Compass </h1>
+        <p class="subtitle">Ask better questions to get better feedback.</p>
 
         <div class="progress">
             <div class="progress-bar">
@@ -17,36 +17,9 @@
             </div>
         </div>
 
-        <!-- Question 1: Stage -->
+<!-- Question 1: Type -->
         <div class="question-section" id="q1">
-            <div class="question-label">1. What stage are you at?</div>
-            <div class="options" id="stageOptions">
-                <div class="option" data-value="inspire">
-                    <div class="option-title">Expand the idea space</div>
-                    <div class="option-desc">I need fresh perspectives and new directions</div>
-                </div>
-                <div class="option" data-value="provoke">
-                    <div class="option-title">Break safe thinking</div>
-                    <div class="option-desc">I need to challenge assumptions and push boundaries</div>
-                </div>
-                <div class="option" data-value="decide">
-                    <div class="option-title">Choose a direction</div>
-                    <div class="option-desc">I have options and need help deciding</div>
-                </div>
-                <div class="option" data-value="nudge">
-                    <div class="option-title">Strengthen the work</div>
-                    <div class="option-desc">The core is solid but needs refinement</div>
-                </div>
-                <div class="option" data-value="sharpen">
-                    <div class="option-title">Sharpen the final details</div>
-                    <div class="option-desc">It's almost done and needs final polish</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Question 2: Type -->
-        <div class="question-section hidden" id="q2">
-            <div class="question-label">2. What type of work are you reviewing?</div>
+            <div class="question-label">1. What type of work are you reviewing?</div>
             <div class="options" id="typeOptions">
                 <div class="option" data-value="comms">
                     <div class="option-title">Visual/Communication design</div>
@@ -71,7 +44,34 @@
             </div>
         </div>
 
-        <!-- Question 3: Audience -->
+        <!-- Question 2: Stage -->
+        <div class="question-section hidden" id="q2">
+            <div class="question-label">2. What stage are you at?</div>
+            <div class="options" id="stageOptions">
+                <div class="option" data-value="inspire">
+                    <div class="option-title">Expand the idea space</div>
+                    <div class="option-desc">I need fresh perspectives and new directions</div>
+                </div>
+                <div class="option" data-value="provoke">
+                    <div class="option-title">Break safe thinking</div>
+                    <div class="option-desc">I need to challenge assumptions and push boundaries</div>
+                </div>
+                <div class="option" data-value="decide">
+                    <div class="option-title">Choose a direction</div>
+                    <div class="option-desc">I have options and need help deciding</div>
+                </div>
+                <div class="option" data-value="nudge">
+                    <div class="option-title">Strengthen the work</div>
+                    <div class="option-desc">The core is solid but needs refinement</div>
+                </div>
+                <div class="option" data-value="sharpen">
+                    <div class="option-title">Sharpen the final details</div>
+                    <div class="option-desc">It's almost done and needs final polish</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 3: Audience (unchanged) -->
         <div class="question-section hidden" id="q3">
             <div class="question-label">3. Who's giving feedback?</div>
             <div class="options" id="audienceOptions">
