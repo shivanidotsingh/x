@@ -95,15 +95,13 @@ function showResults() {
         self: 'Self-review'
     };
 
-    document.getElementById('summary').innerHTML = `
-        <strong>Stage:</strong> ${stageText[stage]}<br>
-        <strong>Type:</strong> ${typeText[type]}<br>
-        <strong>Audience:</strong> ${audienceText[audience]}
-    `;
+document.getElementById('summary').innerHTML = `
+    <h2 class="session-goal">You want to ${stageText[stage].toLowerCase()} for ${typeText[type].toLowerCase()} with ${audienceText[audience].toLowerCase()}.</h2>
+`;
 
-    // Show focus areas
-    const focusHTML = data.focus.map(f => `<span class="focus-tag">${f}</span>`).join('');
-    document.getElementById('focusAreas').innerHTML = focusHTML;
+// Show focus areas as plain text
+const focusHTML = `<div class="session-focus">Goals: ${data.focus.join(', ')}</div>`;
+document.getElementById('focusAreas').innerHTML = focusHTML;
 
     // Show questions with hints
     const questionsHTML = data.questions.map((q, i) => `
