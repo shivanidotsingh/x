@@ -98,12 +98,10 @@ h1 {
     border-radius: 8px;
     margin-bottom: 30px;
 }
-.session-goal {
-    font-size: 24px;
+
+.session-goal .highlight {
+    color: #1CABE2;
     font-weight: 600;
-    color: #333;
-    line-height: 1.4;
-    margin-bottom: 16px;
 }
 
 .session-focus {
