@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Feedback Tool - UNICEF Innovation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Design Feedback Tool</h1>
+        <p class="subtitle">Get tailored questions for your feedback session</p>
+
+        <div class="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Question 1: Stage -->
+        <div class="question-section" id="q1">
+            <div class="question-label">1. What stage are you at?</div>
+            <div class="options" id="stageOptions">
+                <div class="option" data-value="inspire">
+                    <div class="option-title">Expand the idea space</div>
+                    <div class="option-desc">I need fresh perspectives and new directions</div>
+                </div>
+                <div class="option" data-value="provoke">
+                    <div class="option-title">Break safe thinking</div>
+                    <div class="option-desc">I need to challenge assumptions and push boundaries</div>
+                </div>
+                <div class="option" data-value="decide">
+                    <div class="option-title">Choose a direction</div>
+                    <div class="option-desc">I have options and need help deciding</div>
+                </div>
+                <div class="option" data-value="nudge">
+                    <div class="option-title">Strengthen the work</div>
+                    <div class="option-desc">The core is solid but needs refinement</div>
+                </div>
+                <div class="option" data-value="sharpen">
+                    <div class="option-title">Sharpen the final details</div>
+                    <div class="option-desc">It's almost done and needs final polish</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 2: Type -->
+        <div class="question-section hidden" id="q2">
+            <div class="question-label">2. What type of work are you reviewing?</div>
+            <div class="options" id="typeOptions">
+                <div class="option" data-value="comms">
+                    <div class="option-title">Visual/Communication design</div>
+                    <div class="option-desc">Decks, reports, posters, brand assets, data visualizations</div>
+                </div>
+                <div class="option" data-value="product">
+                    <div class="option-title">Digital product/interface</div>
+                    <div class="option-desc">Dashboards, apps, websites, user flows</div>
+                </div>
+                <div class="option" data-value="service">
+                    <div class="option-title">Service/Process design</div>
+                    <div class="option-desc">Workshops, journeys, tools, facilitation methods</div>
+                </div>
+                <div class="option" data-value="strategic">
+                    <div class="option-title">Strategic/Systems design</div>
+                    <div class="option-desc">Problem framing, theories of change, frameworks, research synthesis</div>
+                </div>
+                <div class="option" data-value="policy">
+                    <div class="option-title">Policy/Program design</div>
+                    <div class="option-desc">Interventions, programs, partnerships, governance structures</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 3: Audience -->
+        <div class="question-section hidden" id="q3">
+            <div class="question-label">3. Who's giving feedback?</div>
+            <div class="options" id="audienceOptions">
+                <div class="option" data-value="internal">
+                    <div class="option-title">Internal team</div>
+                    <div class="option-desc">People who know the context deeply</div>
+                </div>
+                <div class="option" data-value="cross">
+                    <div class="option-title">Cross-functional colleagues</div>
+                    <div class="option-desc">People from other teams/disciplines</div>
+                </div>
+                <div class="option" data-value="leadership">
+                    <div class="option-title">Leadership/stakeholders</div>
+                    <div class="option-desc">Decision-makers who need to sign off</div>
+                </div>
+                <div class="option" data-value="external">
+                    <div class="option-title">External partners/beneficiaries</div>
+                    <div class="option-desc">People outside UNICEF (governments, communities, etc.)</div>
+                </div>
+                <div class="option" data-value="self">
+                    <div class="option-title">Just me (self-review)</div>
+                    <div class="option-desc">Using this to reflect before sharing</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <div class="results-header">
+                <h2>Your Feedback Session Guide</h2>
+                <div class="selection-summary" id="summary"></div>
+                <div class="focus-areas" id="focusAreas"></div>
+            </div>
+
+            <div class="questions-list" id="questionsList"></div>
+
+            <div class="actions">
+                <button class="button button-secondary" onclick="reset()">Start Over</button>
+                <button class="button" onclick="exportNotes()">Export Notes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
