@@ -48,7 +48,7 @@ const questions = {
                     hint: "Think about gamification, whimsical language, unexpected interactions, or making mundane tasks feel like discovery."
                 }
             ],
-            focus: ["Usability", "Delight", "Innovation"]
+            focus: ["Usability", "Memorability"]
         },
         service: {
             questions: [
@@ -175,7 +175,7 @@ const questions = {
                     hint: "Think about which features are truly core? What's nice-to-have vs. need-to-have? Where's the MVP?"
                 }
             ],
-            focus: ["Innovation", "Trust", "Simplicity"]
+            focus: ["Trust", "Simplicity"]
         },
         service: {
             questions: [
@@ -277,7 +277,7 @@ const questions = {
                     hint: "Think about readability, language level, visual contrast, or universal design without sacrificing visual power."
                 }
             ],
-            focus: ["Clarity", "Distinctiveness", "Impact"]
+            focus: ["Clarity", "Boldness", "Impact"]
         },
         product: {
             questions: [
@@ -327,7 +327,7 @@ const questions = {
                     hint: "Think about commitments made, expectations set, infrastructure built, or relationships formed."
                 }
             ],
-            focus: ["Clarity", "Adaptability", "Experience"]
+            focus: ["Clarity", "Adaptability", "Participation"]
         },
         strategic: {
             questions: [
@@ -531,7 +531,7 @@ const questions = {
                     hint: "Think about the finishing touch, final polish, or small detail that signals completeness and care."
                 }
             ],
-            focus: ["Clarity", "Refinement", "Completeness"]
+            focus: ["Clarity", "Polish", "Completeness"]
         },
         product: {
             questions: [
@@ -581,7 +581,7 @@ const questions = {
                     hint: "Think about one clearer instruction, one warmer welcome, one moment of acknowledgment, or one friction point removed."
                 }
             ],
-            focus: ["Clarity", "Smoothness", "Completeness"]
+            focus: ["Clarity", "Flow", "Completeness"]
         },
         strategic: {
             questions: [
