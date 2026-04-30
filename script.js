@@ -96,12 +96,12 @@ function showResults() {
     };
 
 document.getElementById('summary').innerHTML = `
-    <h2 class="session-goal">You want to ${stageText[stage].toLowerCase()} for ${typeText[type].toLowerCase()} with ${audienceText[audience].toLowerCase()}.</h2>
+    <div class="session-goal">You want to <span class="highlight">${stageText[stage].toLowerCase()}</span> for <span class="highlight">${typeText[type]}</span> with <span class="highlight">${audienceText[audience].toLowerCase()}</span>.</div>
 `;
 
-// Show focus areas as plain text
-const focusHTML = `<div class="session-focus">Goals: ${data.focus.join(', ')}</div>`;
-document.getElementById('focusAreas').innerHTML = focusHTML;
+const focusHTML = `<div class="session-focus">Design for: ${data.focus.join(', ')}</div>`;
+
+    document.getElementById('focusAreas').innerHTML = focusHTML;
 
     // Show questions with hints
     const questionsHTML = data.questions.map((q, i) => `
@@ -143,12 +143,12 @@ function exportNotes() {
     };
 
     const typeText = {
-        comms: 'Visual/Communication design',
-        product: 'Digital product/interface',
-        service: 'Service/Process design',
-        strategic: 'Strategic/Systems design',
-        policy: 'Policy/Program design'
-    };
+    comms: 'visual communication design',
+    product: 'digital product interface',
+    service: 'service or process design',
+    strategic: 'systems design project',
+    policy: 'policy or program design'
+};
 
     const audienceText = {
         internal: 'Internal team',
