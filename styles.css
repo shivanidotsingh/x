@@ -231,88 +231,37 @@ h1 {
 
 .progress-steps {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 4px;
+    align-items: center;
 }
 
 .progress-step {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 16px 12px;
-    background: #f5f5f5;
-    border-radius: 8px;
-    transition: all 0.3s;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
     position: relative;
-}
-
-.progress-step::after {
-    content: '';
-    position: absolute;
-    right: -12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 0;
-    height: 0;
-    border-top: 8px solid transparent;
-    border-bottom: 8px solid transparent;
-    border-left: 8px solid #f5f5f5;
-    transition: all 0.3s;
-}
-
-.progress-step:last-child::after {
-    display: none;
+    transition: all 0.3s ease;
 }
 
 .progress-step.active {
-    background: #e6f7ff;
-    border: 2px solid #1CABE2;
-}
-
-.progress-step.active::after {
-    border-left-color: #e6f7ff;
+    background: #1CABE2;
 }
 
 .progress-step.completed {
     background: #1CABE2;
-    color: white;
-}
-
-.progress-step.completed::after {
-    border-left-color: #1CABE2;
-}
-
-.step-number {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #ddd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 16px;
-    transition: all 0.3s;
-}
-
-.progress-step.active .step-number {
-    background: #1CABE2;
-    color: white;
-}
-
-.progress-step.completed .step-number {
-    background: white;
-    color: #1CABE2;
 }
 
 .step-label {
-    font-size: 13px;
+    position: absolute;
+    top: 10px;
+    left: 0;
+    font-size: 10px;
+    color: #999;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     font-weight: 500;
-    text-align: center;
-    color: #666;
-    transition: all 0.3s;
 }
 
 .progress-step.active .step-label {
@@ -321,17 +270,17 @@ h1 {
 }
 
 .progress-step.completed .step-label {
-    color: white;
+    color: #666;
+}
+
+/* Hide step numbers completely */
+.step-number {
+    display: none;
 }
 
 @media (max-width: 600px) {
-    .progress-steps {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .progress-step::after {
-        display: none;
+    .step-label {
+        font-size: 9px;
     }
 }
 
