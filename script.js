@@ -4,6 +4,31 @@ let selections = {
     audience: null
 };
 
+// Define text mappings once at the top
+const stageText = {
+    inspire: 'expand the idea space',
+    provoke: 'break safe thinking',
+    decide: 'choose a direction',
+    nudge: 'strengthen the work',
+    sharpen: 'sharpen the final details'
+};
+
+const typeText = {
+    comms: 'visual communication design',
+    product: 'digital product interface',
+    service: 'service or process design',
+    strategic: 'systems design project',
+    policy: 'policy or program design'
+};
+
+const audienceText = {
+    internal: 'internal team',
+    cross: 'cross-functional colleagues',
+    leadership: 'leadership and stakeholders',
+    external: 'external partners or beneficiaries',
+    self: 'self-review'
+};
+
 // Handle option selection
 document.querySelectorAll('.options').forEach(container => {
     container.addEventListener('click', (e) => {
@@ -19,11 +44,11 @@ document.querySelectorAll('.options').forEach(container => {
 
         if (questionId === 'typeOptions') {
             selections.type = value;
-            updateProgress(2); 
+            updateProgress(2);
             showQuestion('q2');
         } else if (questionId === 'stageOptions') {
             selections.stage = value;
-            updateProgress(3); 
+            updateProgress(3);
             showQuestion('q3');
         } else if (questionId === 'audienceOptions') {
             selections.audience = value;
@@ -70,37 +95,12 @@ function showResults() {
     // Show results
     document.getElementById('results').classList.add('active');
 
-    // Build summary
-    const stageText = {
-        inspire: 'Expand the idea space',
-        provoke: 'Break safe thinking',
-        decide: 'Choose a direction',
-        nudge: 'Strengthen the work',
-        sharpen: 'Sharpen the final details'
-    };
+    // Build summary using shared text mappings
+    document.getElementById('summary').innerHTML = `
+        <div class="session-goal">You want to <span class="highlight">${stageText[stage]}</span> for <span class="highlight">${typeText[type]}</span> with <span class="highlight">${audienceText[audience]}</span>.</div>
+    `;
 
-    const typeText = {
-        comms: 'Visual/Communication design',
-        product: 'Digital product/interface',
-        service: 'Service/Process design',
-        strategic: 'Strategic/Systems design',
-        policy: 'Policy/Program design'
-    };
-
-    const audienceText = {
-        internal: 'Internal team',
-        cross: 'Cross-functional colleagues',
-        leadership: 'Leadership/stakeholders',
-        external: 'External partners/beneficiaries',
-        self: 'Self-review'
-    };
-
-document.getElementById('summary').innerHTML = `
-    <div class="session-goal">You want to <span class="highlight">${stageText[stage].toLowerCase()}</span> for <span class="highlight">${typeText[type]}</span> with <span class="highlight">${audienceText[audience].toLowerCase()}</span>.</div>
-`;
-
-const focusHTML = `<div class="session-focus">Design for: ${data.focus.join(', ')}</div>`;
-
+    const focusHTML = `<div class="session-focus">Design for: ${data.focus.join(', ')}</div>`;
     document.getElementById('focusAreas').innerHTML = focusHTML;
 
     // Show questions with hints
@@ -127,36 +127,12 @@ function reset() {
     document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
     document.getElementById('results').classList.remove('active');
     showQuestion('q1');
-    updateProgress(1);  // Changed from 0 to 1 to show step 1 as active
+    updateProgress(1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function exportNotes() {
     const { stage, type, audience } = selections;
-    
-    const stageText = {
-        inspire: 'Expand the idea space',
-        provoke: 'Break safe thinking',
-        decide: 'Choose a direction',
-        nudge: 'Strengthen the work',
-        sharpen: 'Sharpen the final details'
-    };
-
-    const typeText = {
-    comms: 'visual communication design',
-    product: 'digital product interface',
-    service: 'service or process design',
-    strategic: 'systems design project',
-    policy: 'policy or program design'
-};
-
-    const audienceText = {
-        internal: 'Internal team',
-        cross: 'Cross-functional colleagues',
-        leadership: 'Leadership/stakeholders',
-        external: 'External partners/beneficiaries',
-        self: 'Self-review'
-    };
 
     let output = `DESIGN FEEDBACK SESSION NOTES\n`;
     output += `Generated: ${new Date().toLocaleDateString()}\n\n`;
