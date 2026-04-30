@@ -19,16 +19,16 @@ document.querySelectorAll('.options').forEach(container => {
 
         if (questionId === 'typeOptions') {
             selections.type = value;
+            updateProgress(2); 
             showQuestion('q2');
-            updateProgress(1);
         } else if (questionId === 'stageOptions') {
             selections.stage = value;
+            updateProgress(3); 
             showQuestion('q3');
-            updateProgress(2);
         } else if (questionId === 'audienceOptions') {
             selections.audience = value;
-            showResults();
             updateProgress(3);
+            showResults();
         }
     });
 });
