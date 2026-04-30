@@ -20,15 +20,15 @@ document.querySelectorAll('.options').forEach(container => {
         if (questionId === 'typeOptions') {
             selections.type = value;
             showQuestion('q2');
-            updateProgress(33);
+            updateProgress(1);
         } else if (questionId === 'stageOptions') {
             selections.stage = value;
             showQuestion('q3');
-            updateProgress(66);
+            updateProgress(2);
         } else if (questionId === 'audienceOptions') {
             selections.audience = value;
             showResults();
-            updateProgress(100);
+            updateProgress(3);
         }
     });
 });
@@ -38,8 +38,26 @@ function showQuestion(id) {
     document.getElementById(id).classList.remove('hidden');
 }
 
-function updateProgress(percent) {
-    document.getElementById('progressFill').style.width = percent + '%';
+function updateProgress(currentStep) {
+    // Remove all states first
+    document.querySelectorAll('.progress-step').forEach(step => {
+        step.classList.remove('active', 'completed');
+    });
+    
+    // Mark completed steps
+    for (let i = 1; i < currentStep; i++) {
+        document.getElementById(`step${i}`).classList.add('completed');
+    }
+    
+    // Mark current step as active
+    if (currentStep <= 3) {
+        document.getElementById(`step${currentStep}`).classList.add('active');
+    } else {
+        // All steps completed
+        document.querySelectorAll('.progress-step').forEach(step => {
+            step.classList.add('completed');
+        });
+    }
 }
 
 function showResults() {
@@ -111,7 +129,7 @@ function reset() {
     document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
     document.getElementById('results').classList.remove('active');
     showQuestion('q1');
-    updateProgress(0);
+    updateProgress(1);  // Changed from 0 to 1 to show step 1 as active
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
