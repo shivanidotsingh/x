@@ -231,49 +231,26 @@ h1 {
 
 .progress-steps {
     display: flex;
-    gap: 4px;
-    align-items: center;
+    gap: 8px;
 }
 
 .progress-step {
     flex: 1;
-    height: 6px;
+    height: 4px;
     background: #e0e0e0;
-    border-radius: 3px;
-    position: relative;
-    transition: all 0.3s ease;
+    border-radius: 2px;
+    transition: background 0.3s ease;
 }
 
-.progress-step.active {
-    background: #1CABE2;
-}
-
+.progress-step.active,
 .progress-step.completed {
     background: #1CABE2;
 }
 
 .step-label {
-    position: absolute;
-    top: 10px;
-    left: 0;
-    font-size: 10px;
-    color: #999;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
+    display: none;
 }
 
-.progress-step.active .step-label {
-    color: #1CABE2;
-    font-weight: 600;
-}
-
-.progress-step.completed .step-label {
-    color: #666;
-}
-
-/* Hide step numbers completely */
 .step-number {
     display: none;
 }
