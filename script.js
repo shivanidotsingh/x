@@ -17,12 +17,12 @@ document.querySelectorAll('.options').forEach(container => {
         const value = option.dataset.value;
         const questionId = parent.id;
 
-        if (questionId === 'stageOptions') {
-            selections.stage = value;
+        if (questionId === 'typeOptions') {
+            selections.type = value;
             showQuestion('q2');
             updateProgress(33);
-        } else if (questionId === 'typeOptions') {
-            selections.type = value;
+        } else if (questionId === 'stageOptions') {
+            selections.stage = value;
             showQuestion('q3');
             updateProgress(66);
         } else if (questionId === 'audienceOptions') {
