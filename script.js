@@ -15,14 +15,14 @@ const stageText = {
 
 const typeText = {
     comms: 'visual communication design',
-    product: 'digital product interface',
+    product: 'digital product',
     service: 'service or process design',
-    strategic: 'systems design project',
+    strategic: 'systems design',
     policy: 'policy or program design'
 };
 
 const audienceText = {
-    internal: 'internal team',
+    internal: 'internal team members',
     cross: 'cross-functional colleagues',
     leadership: 'leadership and stakeholders',
     external: 'external partners or beneficiaries',
@@ -97,7 +97,7 @@ function showResults() {
 
     // Build summary using shared text mappings
     document.getElementById('summary').innerHTML = `
-        <div class="session-goal">You want to <span class="highlight">${stageText[stage]}</span> for <span class="highlight">${typeText[type]}</span> with <span class="highlight">${audienceText[audience]}</span>.</div>
+        <div class="session-goal">You want to <span class="highlight">${stageText[stage]}</span> for a <span class="highlight">${typeText[type]}</span> project with <span class="highlight">${audienceText[audience]}</span>.</div>
     `;
 
     const focusHTML = `<div class="session-focus">Design for: ${data.focus.join(', ')}</div>`;
