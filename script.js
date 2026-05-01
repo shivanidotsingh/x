@@ -26,7 +26,7 @@ const audienceText = {
     cross: 'cross-functional colleagues',
     leadership: 'leadership and stakeholders',
     external: 'external partners or beneficiaries',
-    self: 'self-review'
+    self: 'yourself'
 };
 
 // Handle option selection
