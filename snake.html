@@ -43,10 +43,13 @@
   .step:hover{background:var(--paper)}
   .step.done{background:var(--paper); color:var(--ink)}
   .step.on{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
-  .stepnote{font-size:12px; color:var(--ink-2); margin-top:9px; min-height:1.4em}
-  .controls{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:12px}
-  .controls .gap{width:8px}
-  label.sel-label{font-size:12.5px; color:var(--ink-2); margin-right:2px}
+  .stepnote{position:absolute; left:20px; top:16px; font-size:12.5px; color:var(--ink-2);
+    pointer-events:none; opacity:0; transition:opacity .45s ease}
+  .stepnote.show{opacity:1; transition:opacity .12s ease}
+.shapes{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+  .shapes .right{margin-left:auto}
+  .shape.on{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
+  .steps:empty{display:none}
 </style>
 </head>
 <body>
@@ -58,6 +61,7 @@
 
 <main>
   <canvas id="cv"></canvas>
+  <div class="stepnote" id="stepnote"></div>
   <div class="viewbtns">
     <button class="icon" id="rotL" title="Rotate left">&#8630;</button>
     <button class="icon" id="rotR" title="Rotate right">&#8631;</button>
@@ -66,22 +70,17 @@
 </main>
 
 <footer>
-  <div class="controls">
-    <label class="sel-label" for="preset">Shape</label>
-    <select id="preset">
-      <option value="00000000000000000000000">Straight</option>
-      <option value="13133131131331311313313" selected>Ball</option>
-      <option value="02202201022022022000000">Cat</option>
-      <option value="01013211231030000200002">Cobra</option>
-      <option value="20220202202000220002022">Cross</option>
-      <option value="30000001300000013000000">Triangle</option>
-      <option value="11111111111111111111111">Zigzag</option>
-      <option value="00110033001100330011003">Coronet</option>
-      <option value="10012321211233232123003">Three peaks</option>
-    </select>
+  <div class="shapes" id="shapes">
+    <button class="shape" type="button" data-code="00000000000000000000000">Straight</button>
+    <button class="shape" type="button" data-code="13133131131331311313313">Ball</button>
+    <button class="shape" type="button" data-code="20220202202000220002022">Cross</button>
+    <button class="shape" type="button" data-code="30000001300000013000000">Triangle</button>
+    <button class="shape" type="button" data-code="11111111111111111111111">Zigzag</button>
+    <button class="shape" type="button" data-code="00110033001100330011003">Coronet</button>
+    <button class="shape" type="button" data-code="10012321211233232123003">Three peaks</button>
+    <button id="stepsToggle" type="button" class="right">Show instructions</button>
   </div>
   <div class="steps" id="steps"></div>
-  <div class="stepnote" id="stepnote"></div>
 </footer>
 
 <script>
@@ -202,7 +201,7 @@ const REF_RADIUS=(()=>{
     const p=wd.pts[k], d=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz);
     if(d>r) r=d;
   }
-  return r*1.5;
+  return r*1.852;   // the Ball plus headroom; larger divisor = smaller glyphs
 })();
 let zoom=1;
 let az=VIEW_AZ, el=VIEW_EL;
@@ -354,21 +353,41 @@ function foldingOrder(full){
 
 const TURN_NAME={1:"quarter turn",2:"half turn",3:"three-quarter turn"};
 
+let SHOW_STEPS=false;
+
 function setShape(full){
   shape=full.slice();
-  order=foldingOrder(shape);
-  goToStep(order.length);
+  if(SHOW_STEPS){ order=foldingOrder(shape); goToStep(order.length); return; }
+  order=[]; step=0;
+  turns=shape.slice();
+  document.getElementById("steps").innerHTML="";
+  document.getElementById("stepnote").classList.remove("show");
+  paintShapes();
+  recompute();
+}
+function paintShapes(){
+  const code=shape.join("");
+  for(const b of document.getElementById("shapes").children)
+    b.classList.toggle("on", b.dataset.code===code);
 }
 function goToStep(k){
   step=k;
   turns=new Array(23).fill(0);
   for(let j=0;j<step;j++) turns[order[j]]=shape[order[j]];
+  paintShapes();
   paintSteps();
   recompute();
 }
+let noteTimer=0;
+function flashNote(text){
+  const note=document.getElementById("stepnote");
+  note.textContent=text;
+  note.classList.add("show");
+  clearTimeout(noteTimer);
+  noteTimer=setTimeout(()=>note.classList.remove("show"), 2600);
+}
 function paintSteps(){
   const row=document.getElementById("steps");
-  const note=document.getElementById("stepnote");
   if(order.length!==row.children.length){
     row.innerHTML="";
     for(let i=1;i<=order.length;i++){
@@ -383,9 +402,9 @@ function paintSteps(){
     b.classList.toggle("on", i===step);
     b.classList.toggle("done", i<step);
   }
-  if(!order.length){ note.textContent="No turns — this is the rest position."; return; }
+  if(!order.length){ flashNote("No turns — this is the rest position."); return; }
   const j=order[step-1];
-  note.textContent=`Step ${step} of ${order.length} — joint ${j+1}, ${TURN_NAME[shape[j]]}`;
+  flashNote(`joint ${j+1}, ${TURN_NAME[shape[j]]}`);
 }
 
 /* ---------- ui ---------- */
@@ -425,12 +444,22 @@ if(cv){
 
   window.addEventListener("keydown",e=>{
     if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
+    if(!SHOW_STEPS) return;
     if(e.key==="ArrowLeft"&&step>1){ goToStep(step-1); e.preventDefault(); }
     else if(e.key==="ArrowRight"&&step<order.length){ goToStep(step+1); e.preventDefault(); }
   });
 
-  const preset=document.getElementById("preset");
-  preset.onchange=()=>setShape(preset.value.split("").map(Number));
+  for(const b of document.getElementById("shapes").children)
+    if(b.dataset.code)
+      b.addEventListener("click",()=>setShape(b.dataset.code.split("").map(Number)));
+
+  const toggle=document.getElementById("stepsToggle");
+  toggle.onclick=()=>{
+    SHOW_STEPS=!SHOW_STEPS;
+    toggle.textContent=SHOW_STEPS?"Hide instructions":"Show instructions";
+    document.getElementById("steps").innerHTML="";
+    setShape(shape);
+  };
   window.addEventListener("resize",()=>draw());
   setShape(shape);
 }
