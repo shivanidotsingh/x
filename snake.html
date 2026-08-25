@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snake — 24 wedges, 23 joints</title>
+<style>
+  :root{
+    --paper:#E4E1DB; --paper-2:#EDEBE6; --ink:#2E2B26; --ink-2:#6E6960;
+    --line:#C9C5BD; --line-2:#B3AEA4; --alarm:#C2544A;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--paper); color:var(--ink);
+    font:400 14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  header{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+    padding:14px 20px 12px; border-bottom:1px solid var(--line)}
+  h1{margin:0; font-size:15px; font-weight:500}
+  header .sub{color:var(--ink-2); font-size:12.5px}
+  header .spacer{flex:1}
+  main{flex:1; position:relative; min-height:0}
+  canvas{display:block; width:100%; height:100%; cursor:grab; touch-action:none}
+  canvas.dragging{cursor:grabbing}
+  .viewbtns{position:absolute; right:16px; top:14px; display:flex; gap:6px}
+  button, select{font:inherit; font-size:12.5px; color:var(--ink);
+    background:var(--paper-2); border:1px solid var(--line-2); border-radius:6px;
+    padding:5px 10px; cursor:pointer}
+  button:hover, select:hover{background:#fff}
+  button:active{transform:translateY(1px)}
+  button:focus-visible, select:focus-visible{outline:2px solid var(--ink); outline-offset:1px}
+  button.icon{padding:5px 8px; min-width:30px}
+  footer{border-top:1px solid var(--line); padding:12px 20px 16px; background:var(--paper-2)}
+  .controls{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:12px}
+  .controls .gap{width:8px}
+  label.sel-label{font-size:12.5px; color:var(--ink-2); margin-right:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Snake</h1>
+  <span class="sub">24 wedges · 23 joints · <span class="mono">4<sup>23</sup></span> states</span>
+</header>
+
+<main>
+  <canvas id="cv"></canvas>
+  <div class="viewbtns">
+    <button class="icon" id="rotL" title="Rotate left">&#8630;</button>
+    <button class="icon" id="rotR" title="Rotate right">&#8631;</button>
+    <button class="icon" id="viewreset" title="Reset view">reset</button>
+  </div>
+</main>
+
+<footer>
+  <div class="controls">
+    <label class="sel-label" for="preset">Shape</label>
+    <select id="preset">
+      <option value="00000000000000000000000">Straight</option>
+      <option value="13133131131331311313313" selected>Ball</option>
+      <option value="02202201022022022000000">Cat</option>
+      <option value="01013211231030000200002">Cobra</option>
+      <option value="20220202202000220002022">Cross</option>
+      <option value="30000001300000013000000">Triangle</option>
+      <option value="11111111111111111111111">Zigzag</option>
+      <option value="00110033001100330011003">Coronet</option>
+      <option value="10012321211233232123003">Three peaks</option>
+    </select>
+    <div class="gap"></div>
+    <button id="random">Random fold</button>
+  </div>
+</footer>
+
+<script>
+"use strict";
+
+/* ---------- the wedge, on a cubic lattice (doubled coords: cube edge = 2) ----
+   Each wedge is half a cube: two triangular faces, one rectangular face, two
+   square faces. The two square faces are perpendicular and share an edge, and
+   they are what neighbouring wedges connect through.
+
+   The joint transform matters more than anything else here. Consecutive
+   wedges alternate orientation — one "up", the next "down" — so that they
+   interlock into a solid bar when every joint is at rest. Getting this
+   backwards makes the rest position a hollow sawtooth ribbon instead of a
+   rod, and then nothing downstream can look right. The base placement below
+   is a proper rotation (it includes a flip in z); the mirror-image version
+   is the wrong one.                                                          */
+
+const V = {B:[2,0,0], C:[0,2,0], G:[2,2,0], E:[2,0,2], F:[0,2,2], H:[2,2,2]};
+const VK = ["B","C","G","E","F","H"];
+const FACES = [
+  ["C","F","H","G"],   // square, joins the previous wedge
+  ["B","G","H","E"],   // square, joins the next wedge
+  ["B","E","F","C"],   // the rectangular face
+  ["B","C","G"],       // triangle
+  ["E","H","F"]        // triangle
+];
+
+function mul(a,b){
+  const r=new Array(16);
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+    let s=0; for(let k=0;k<4;k++) s+=a[i*4+k]*b[k*4+j];
+    r[i*4+j]=s;
+  }
+  return r;
+}
+const I4=[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+const ap=(m,p)=>[m[0]*p[0]+m[1]*p[1]+m[2]*p[2]+m[3],
+                 m[4]*p[0]+m[5]*p[1]+m[6]*p[2]+m[7],
+                 m[8]*p[0]+m[9]*p[1]+m[10]*p[2]+m[11]];
+const apd=(m,p)=>[m[0]*p[0]+m[1]*p[1]+m[2]*p[2],
+                  m[4]*p[0]+m[5]*p[1]+m[6]*p[2],
+                  m[8]*p[0]+m[9]*p[1]+m[10]*p[2]];
+const T=(x,y,z)=>[1,0,0,x, 0,1,0,y, 0,0,1,z, 0,0,0,1];
+const CS=[[1,0],[0,1],[-1,0],[0,-1]];
+const Rx=k=>{const[c,s]=CS[k&3];return[1,0,0,0, 0,c,-s,0, 0,s,c,0, 0,0,0,1]};
+
+// base placement, then the detent: 90k degrees about the axis through the
+// centre of the shared square face, normal to it
+const BASE=[0,-1,0,4, -1,0,0,2, 0,0,-1,2, 0,0,0,1];
+const JOINT=[0,1,2,3].map(k=>
+  mul(mul(mul(T(2,1,1),Rx(k)),T(-2,-1,-1)), BASE)
+);
+
+const CORNERS=[[0,0,0],[2,0,0],[0,2,0],[0,0,2],[2,2,0],[2,0,2],[0,2,2],[2,2,2]];
+function cellOf(f){
+  const ps=CORNERS.map(p=>ap(f,p));
+  return [0,1,2].map(i=>Math.min(ps[0][i],ps[1][i],ps[2][i],ps[3][i],
+                                 ps[4][i],ps[5][i],ps[6][i],ps[7][i])/2);
+}
+const normOf = f => apd(f,[1,1,0]);
+const opp=(a,b)=>a[0]===-b[0]&&a[1]===-b[1]&&a[2]===-b[2];
+
+function build(turns){
+  const out=[]; let f=I4;
+  for(let i=0;i<24;i++){
+    const pts={}; for(const k of VK) pts[k]=ap(f,V[k]);
+    out.push({pts,cell:cellOf(f),n:normOf(f)});
+    if(i<23) f=mul(f,JOINT[turns[i]]);
+  }
+  return out;
+}
+
+/* Two wedges may share a cell only as complementary halves. */
+function analyse(ws){
+  const cells=new Map();
+  ws.forEach((w,i)=>{
+    const k=w.cell.join(",");
+    if(!cells.has(k)) cells.set(k,[]);
+    cells.get(k).push(i);
+  });
+  const bad=new Set(); let full=0;
+  for(const list of cells.values()){
+    if(list.length>2){ list.forEach(i=>bad.add(i)); continue; }
+    if(list.length===2){
+      if(opp(ws[list[0]].n, ws[list[1]].n)) full++;
+      else list.forEach(i=>bad.add(i));
+    }
+  }
+  return {cells:cells.size, full, bad};
+}
+
+/* ---------- state ---------- */
+const PALETTE=[[127,179,232],[158,224,196],[143,174,138],[245,177,131],[247,220,138],[187,217,240]];
+const PAPER=[228,225,219];
+const VIEW_AZ=52*Math.PI/180, VIEW_EL=28*Math.PI/180;
+
+let turns="13133131131331311313313".split("").map(Number);
+let selected=0;
+let az=VIEW_AZ, el=VIEW_EL;
+let wedges=[], info={cells:0,full:0,bad:new Set()};
+
+const cv=typeof document!=="undefined" ? document.getElementById("cv") : null;
+const ctx=cv ? cv.getContext("2d") : null;
+
+/* ---------- renderer ----------
+   Per-pixel depth buffer rather than sorting whole faces back to front.
+   Sorting by centroid picks the wrong surface wherever two faces overlap
+   without their centroids agreeing, which shows far surfaces through near
+   ones. Flat fills, one-pixel seams, nothing else.                          */
+
+function surface(ws){
+  /* Every face of every wedge, with no attempt to pre-remove interior ones.
+     Discarding faces shared by exactly two wedges looks like a safe
+     optimisation and is not: where a wedge's square face meets two
+     half-faces belonging to different wedges, the overlap is partial, the
+     exact-match test misses it, and real surface gets deleted. That punched
+     holes into roughly a fifth of the solid. The depth buffer already hides
+     interior faces correctly, so it can do the job on its own. */
+  const all=[];
+  ws.forEach((wd,i)=>{
+    for(const face of FACES) all.push({pts:face.map(k=>wd.pts[k]), i});
+  });
+  const out=[];
+  for(const f of all){
+    const p=f.pts;
+    const a=[p[1][0]-p[0][0],p[1][1]-p[0][1],p[1][2]-p[0][2]];
+    const b=[p[2][0]-p[0][0],p[2][1]-p[0][1],p[2][2]-p[0][2]];
+    let nx=a[1]*b[2]-a[2]*b[1], ny=a[2]*b[0]-a[0]*b[2], nz=a[0]*b[1]-a[1]*b[0];
+    const L=Math.hypot(nx,ny,nz)||1;
+    out.push({pts:p, i:f.i, nrm:[nx/L,ny/L,nz/L]});
+  }
+  return out;
+}
+
+function tri(a,b,c,id,zb,idb,W,H){
+  const det=(b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]);
+  if(!(Math.abs(det)>1e-9)) return;
+  const minx=Math.max(0,Math.floor(Math.min(a[0],b[0],c[0])));
+  const maxx=Math.min(W-1,Math.ceil(Math.max(a[0],b[0],c[0])));
+  const miny=Math.max(0,Math.floor(Math.min(a[1],b[1],c[1])));
+  const maxy=Math.min(H-1,Math.ceil(Math.max(a[1],b[1],c[1])));
+  const inv=1/det;
+  for(let y=miny;y<=maxy;y++){
+    const fy=y+0.5;
+    for(let x=minx;x<=maxx;x++){
+      const fx=x+0.5;
+      const w0=((b[0]-a[0])*(fy-a[1])-(fx-a[0])*(b[1]-a[1]))*inv; if(w0<-1e-9) continue;
+      const w1=((fx-a[0])*(c[1]-a[1])-(c[0]-a[0])*(fy-a[1]))*inv; if(w1<-1e-9) continue;
+      const w2=1-w0-w1; if(w2<-1e-9) continue;
+      const z=w2*a[2]+w1*b[2]+w0*c[2];
+      const i=y*W+x;
+      if(z>zb[i]){ zb[i]=z; idb[i]=id; }
+    }
+  }
+}
+
+function draw(fast){
+  if(!cv) return;
+  const cw=cv.clientWidth||900, ch=cv.clientHeight||600;
+  let ss=fast?1:2;
+  while(cw*ss*ch*ss > 2.4e6 && ss>1) ss-=0.25;
+  const W=Math.max(1,Math.round(cw*ss)), H=Math.max(1,Math.round(ch*ss));
+  if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
+
+  const ce=Math.cos(el), se=Math.sin(el), ca=Math.cos(az), sa=Math.sin(az);
+  const F=[ce*ca, ce*sa, se];
+  const R=[-sa, ca, 0];
+  const U=[F[1]*R[2]-F[2]*R[1], F[2]*R[0]-F[0]*R[2], F[0]*R[1]-F[1]*R[0]];
+  const kl=[0.30,-0.40,0.87], kn=Math.hypot(kl[0],kl[1],kl[2]);
+  const KEY=[kl[0]/kn, kl[1]/kn, kl[2]/kn];
+
+  let cx=0,cy=0,cz=0,n=0;
+  for(const wd of wedges) for(const k of VK){ const p=wd.pts[k]; cx+=p[0];cy+=p[1];cz+=p[2];n++; }
+  cx/=n; cy/=n; cz/=n;
+  let rad=1;
+  for(const wd of wedges) for(const k of VK){
+    const p=wd.pts[k], d=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz);
+    if(d>rad) rad=d;
+  }
+  const s=Math.min(W,H)*0.44/rad, ox=W/2, oy=H/2;
+  const pr=p=>{
+    const dx=p[0]-cx, dy=p[1]-cy, dz=p[2]-cz;
+    return [ox+(dx*R[0]+dy*R[1]+dz*R[2])*s,
+            oy-(dx*U[0]+dy*U[1]+dz*U[2])*s,
+            dx*F[0]+dy*F[1]+dz*F[2]];
+  };
+
+  const faces=surface(wedges);
+  const zb=new Float32Array(W*H).fill(-1e30);
+  const idb=new Int32Array(W*H);
+  const cols=[[0,0,0]];
+  for(const f of faces){
+    if(f.nrm[0]*F[0]+f.nrm[1]*F[1]+f.nrm[2]*F[2] <= 1e-7) continue;
+    const key=Math.max(0, f.nrm[0]*KEY[0]+f.nrm[1]*KEY[1]+f.nrm[2]*KEY[2]);
+    const shade=0.56+0.44*key;
+    const base=info.bad.has(f.i) ? [194,84,74] : PALETTE[f.i%PALETTE.length];
+    cols.push([base[0]*shade, base[1]*shade, base[2]*shade]);
+    const id=cols.length-1;
+    const P=f.pts.map(pr);
+    for(let t=1;t<P.length-1;t++) tri(P[0],P[t],P[t+1],id,zb,idb,W,H);
+  }
+
+  const img=ctx.createImageData(W,H);
+  const px=img.data;
+  for(let i=0;i<W*H;i++){
+    const o=i*4, id=idb[i];
+    if(!id){ px[o]=PAPER[0]; px[o+1]=PAPER[1]; px[o+2]=PAPER[2]; px[o+3]=255; continue; }
+    const x=i%W, y=(i/W)|0;
+    const l=x>0?idb[i-1]:0, r=x<W-1?idb[i+1]:0;
+    const u=y>0?idb[i-W]:0, dn=y<H-1?idb[i+W]:0;
+    const k=(l!==id||r!==id||u!==id||dn!==id) ? 0.80 : 1;
+    const c=cols[id];
+    px[o]=c[0]*k; px[o+1]=c[1]*k; px[o+2]=c[2]*k; px[o+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+
+/* ---------- ui ---------- */
+function recompute(){
+  wedges=build(turns);
+  info=analyse(wedges);
+  draw();
+}
+
+if(cv){
+  let dragging=false, lastX=0, lastY=0;
+  cv.addEventListener("pointerdown",e=>{
+    dragging=true; lastX=e.clientX; lastY=e.clientY;
+    cv.classList.add("dragging"); cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener("pointermove",e=>{
+    if(!dragging) return;
+    az -= (e.clientX-lastX)*0.008;
+    el = Math.max(-1.35, Math.min(1.35, el + (e.clientY-lastY)*0.008));
+    lastX=e.clientX; lastY=e.clientY;
+    draw(true);
+  });
+  const endDrag=()=>{ if(dragging) draw(); dragging=false; cv.classList.remove("dragging"); };
+  cv.addEventListener("pointerup",endDrag);
+  cv.addEventListener("pointercancel",endDrag);
+
+  document.getElementById("rotL").onclick=()=>{ az-=Math.PI/12; draw(); };
+  document.getElementById("rotR").onclick=()=>{ az+=Math.PI/12; draw(); };
+  document.getElementById("viewreset").onclick=()=>{ az=VIEW_AZ; el=VIEW_EL; draw(); };
+
+  window.addEventListener("keydown",e=>{
+    if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
+    if(e.key==="ArrowLeft"){ selected=(selected+22)%23; e.preventDefault(); }
+    else if(e.key==="ArrowRight"){ selected=(selected+1)%23; e.preventDefault(); }
+    else if(e.key==="ArrowUp"){ turns[selected]=(turns[selected]+1)%4; recompute(); e.preventDefault(); }
+    else if(e.key==="ArrowDown"){ turns[selected]=(turns[selected]+3)%4; recompute(); e.preventDefault(); }
+  });
+
+  const preset=document.getElementById("preset");
+  preset.onchange=()=>{ turns=preset.value.split("").map(Number); recompute(); };
+  document.getElementById("random").onclick=()=>{
+    for(let attempt=0; attempt<400; attempt++){
+      const occ=new Map(), tr=[];
+      let f=I4, ok=true;
+      const put=(k,nn)=>{ if(!occ.has(k)) occ.set(k,[]); occ.get(k).push(nn); };
+      put(cellOf(f).join(","), normOf(f));
+      for(let i=0;i<23;i++){
+        const order=[0,1,2,3].sort(()=>Math.random()-0.5);
+        let moved=false;
+        for(const t of order){
+          const nf=mul(f,JOINT[t]);
+          const k=cellOf(nf).join(","), nn=normOf(nf);
+          const c=occ.get(k);
+          if(c && (c.length>=2 || !opp(c[0],nn))) continue;
+          put(k,nn); f=nf; tr.push(t); moved=true; break;
+        }
+        if(!moved){ ok=false; break; }
+      }
+      if(ok){ turns=tr; recompute(); return; }
+    }
+  };
+  window.addEventListener("resize",()=>draw());
+  recompute();
+}
+</script>
+</body>
+</html>
