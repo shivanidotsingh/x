@@ -35,6 +35,15 @@
   button:focus-visible, select:focus-visible{outline:2px solid var(--ink); outline-offset:1px}
   button.icon{padding:5px 8px; min-width:30px}
   footer{border-top:1px solid var(--line); padding:12px 20px 16px; background:var(--paper-2)}
+.steps{display:flex; gap:4px; flex-wrap:wrap; margin-top:14px}
+  .step{width:27px; height:27px; padding:0; border-radius:5px; background:#fff;
+    border:1px solid var(--line-2); color:var(--ink-2); cursor:pointer;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px;
+    display:flex; align-items:center; justify-content:center}
+  .step:hover{background:var(--paper)}
+  .step.done{background:var(--paper); color:var(--ink)}
+  .step.on{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
+  .stepnote{font-size:12px; color:var(--ink-2); margin-top:9px; min-height:1.4em}
   .controls{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:12px}
   .controls .gap{width:8px}
   label.sel-label{font-size:12.5px; color:var(--ink-2); margin-right:2px}
@@ -73,6 +82,8 @@
     <div class="gap"></div>
     <button id="random">Random fold</button>
   </div>
+  <div class="steps" id="steps"></div>
+  <div class="stepnote" id="stepnote"></div>
 </footer>
 
 <script>
@@ -170,8 +181,28 @@ const PALETTE=[[127,179,232],[158,224,196],[143,174,138],[245,177,131],[247,220,
 const PAPER=[228,225,219];
 const VIEW_AZ=52*Math.PI/180, VIEW_EL=28*Math.PI/180;
 
-let turns="13133131131331311313313".split("").map(Number);
-let selected=0;
+let shape="13133131131331311313313".split("").map(Number);
+let order=[];          // joints to turn, in an order where every stage is legal
+let step=0;            // 1..order.length; there is no step 0
+let turns=shape.slice();
+
+/* One wedge is the same size on screen in every shape. The scale is set once
+   from the straight bar — the largest state — and never refitted, so the ball
+   reads as genuinely compact next to the rod rather than being blown up to
+   fill the frame. */
+const REF_RADIUS=(()=>{
+  const ws=build(new Array(23).fill(0));
+  let cx=0,cy=0,cz=0,n=0;
+  for(const wd of ws) for(const k of VK){ const p=wd.pts[k]; cx+=p[0];cy+=p[1];cz+=p[2];n++; }
+  cx/=n; cy/=n; cz/=n;
+  let r=1;
+  for(const wd of ws) for(const k of VK){
+    const p=wd.pts[k], d=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz);
+    if(d>r) r=d;
+  }
+  return r;
+})();
+let zoom=1;
 let az=VIEW_AZ, el=VIEW_EL;
 let wedges=[], info={cells:0,full:0,bad:new Set()};
 
@@ -245,15 +276,11 @@ function draw(fast){
   const kl=[0.30,-0.40,0.87], kn=Math.hypot(kl[0],kl[1],kl[2]);
   const KEY=[kl[0]/kn, kl[1]/kn, kl[2]/kn];
 
+  // centre on the current shape, but never rescale to it
   let cx=0,cy=0,cz=0,n=0;
   for(const wd of wedges) for(const k of VK){ const p=wd.pts[k]; cx+=p[0];cy+=p[1];cz+=p[2];n++; }
   cx/=n; cy/=n; cz/=n;
-  let rad=1;
-  for(const wd of wedges) for(const k of VK){
-    const p=wd.pts[k], d=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz);
-    if(d>rad) rad=d;
-  }
-  const s=Math.min(W,H)*0.44/rad, ox=W/2, oy=H/2;
+  const s=Math.min(W,H)*0.44*zoom/REF_RADIUS, ox=W/2, oy=H/2;
   const pr=p=>{
     const dx=p[0]-cx, dy=p[1]-cy, dz=p[2]-cz;
     return [ox+(dx*R[0]+dy*R[1]+dz*R[2])*s,
@@ -291,6 +318,74 @@ function draw(fast){
   ctx.putImageData(img,0,0);
 }
 
+/* ---------- folding order ----------
+   The turns are independent, so the finished shape is the same whatever order
+   you make them in — but the obvious left-to-right order passes through
+   stages where the snake occupies the same space twice, which you cannot do
+   with the toy in your hand. So: search for an order whose every prefix is
+   collision-free. Backtracking finds one almost immediately (the Ball, the
+   worst case, takes about ninety nodes). If none exists, fall back to joint
+   order rather than showing nothing.                                        */
+function foldingOrder(full){
+  const idx=[];
+  for(let i=0;i<23;i++) if(full[i]) idx.push(i);
+  const t=new Array(23).fill(0), used=new Set(), out=[];
+  let nodes=0;
+  const legal=()=>analyse(build(t)).bad.size===0;
+  function dfs(){
+    if(++nodes>60000) return false;
+    if(out.length===idx.length) return true;
+    for(const i of idx){
+      if(used.has(i)) continue;
+      t[i]=full[i];
+      if(legal()){
+        used.add(i); out.push(i);
+        if(dfs()) return true;
+        out.pop(); used.delete(i);
+      }
+      t[i]=0;
+    }
+    return false;
+  }
+  return dfs() ? out : idx;
+}
+
+const TURN_NAME={1:"quarter turn",2:"half turn",3:"three-quarter turn"};
+
+function setShape(full){
+  shape=full.slice();
+  order=foldingOrder(shape);
+  goToStep(order.length);
+}
+function goToStep(k){
+  step=k;
+  turns=new Array(23).fill(0);
+  for(let j=0;j<step;j++) turns[order[j]]=shape[order[j]];
+  paintSteps();
+  recompute();
+}
+function paintSteps(){
+  const row=document.getElementById("steps");
+  const note=document.getElementById("stepnote");
+  if(order.length!==row.children.length){
+    row.innerHTML="";
+    for(let i=1;i<=order.length;i++){
+      const b=document.createElement("button");
+      b.className="step"; b.type="button"; b.textContent=i;
+      b.addEventListener("click",()=>goToStep(i));
+      row.appendChild(b);
+    }
+  }
+  for(let i=1;i<=order.length;i++){
+    const b=row.children[i-1];
+    b.classList.toggle("on", i===step);
+    b.classList.toggle("done", i<step);
+  }
+  if(!order.length){ note.textContent="No turns — this is the rest position."; return; }
+  const j=order[step-1];
+  note.textContent=`Step ${step} of ${order.length} — joint ${j+1}, ${TURN_NAME[shape[j]]}`;
+}
+
 /* ---------- ui ---------- */
 function recompute(){
   wedges=build(turns);
@@ -315,20 +410,25 @@ if(cv){
   cv.addEventListener("pointerup",endDrag);
   cv.addEventListener("pointercancel",endDrag);
 
+  cv.addEventListener("wheel",e=>{
+    e.preventDefault();
+    zoom=Math.max(0.6, Math.min(8, zoom*Math.exp(-e.deltaY*0.0015)));
+    draw(true);
+    clearTimeout(cv._zt); cv._zt=setTimeout(()=>draw(),140);
+  },{passive:false});
+
   document.getElementById("rotL").onclick=()=>{ az-=Math.PI/12; draw(); };
   document.getElementById("rotR").onclick=()=>{ az+=Math.PI/12; draw(); };
-  document.getElementById("viewreset").onclick=()=>{ az=VIEW_AZ; el=VIEW_EL; draw(); };
+  document.getElementById("viewreset").onclick=()=>{ az=VIEW_AZ; el=VIEW_EL; zoom=1; draw(); };
 
   window.addEventListener("keydown",e=>{
     if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
-    if(e.key==="ArrowLeft"){ selected=(selected+22)%23; e.preventDefault(); }
-    else if(e.key==="ArrowRight"){ selected=(selected+1)%23; e.preventDefault(); }
-    else if(e.key==="ArrowUp"){ turns[selected]=(turns[selected]+1)%4; recompute(); e.preventDefault(); }
-    else if(e.key==="ArrowDown"){ turns[selected]=(turns[selected]+3)%4; recompute(); e.preventDefault(); }
+    if(e.key==="ArrowLeft"&&step>1){ goToStep(step-1); e.preventDefault(); }
+    else if(e.key==="ArrowRight"&&step<order.length){ goToStep(step+1); e.preventDefault(); }
   });
 
   const preset=document.getElementById("preset");
-  preset.onchange=()=>{ turns=preset.value.split("").map(Number); recompute(); };
+  preset.onchange=()=>setShape(preset.value.split("").map(Number));
   document.getElementById("random").onclick=()=>{
     for(let attempt=0; attempt<400; attempt++){
       const occ=new Map(), tr=[];
@@ -347,11 +447,11 @@ if(cv){
         }
         if(!moved){ ok=false; break; }
       }
-      if(ok){ turns=tr; recompute(); return; }
+      if(ok){ setShape(tr); return; }
     }
   };
   window.addEventListener("resize",()=>draw());
-  recompute();
+  setShape(shape);
 }
 </script>
 </body>
