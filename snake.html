@@ -79,8 +79,6 @@
       <option value="00110033001100330011003">Coronet</option>
       <option value="10012321211233232123003">Three peaks</option>
     </select>
-    <div class="gap"></div>
-    <button id="random">Random fold</button>
   </div>
   <div class="steps" id="steps"></div>
   <div class="stepnote" id="stepnote"></div>
@@ -191,7 +189,11 @@ let turns=shape.slice();
    reads as genuinely compact next to the rod rather than being blown up to
    fill the frame. */
 const REF_RADIUS=(()=>{
-  const ws=build(new Array(23).fill(0));
+  // Scale is set once and never refitted, so a wedge is the same size in every
+  // shape. The reference is the Ball plus half again of headroom rather than
+  // the straight bar: it keeps the compact shapes large, and lets the long
+  // ones run off the edges, which is the better trade for looking at them.
+  const ws=build("13133131131331311313313".split("").map(Number));
   let cx=0,cy=0,cz=0,n=0;
   for(const wd of ws) for(const k of VK){ const p=wd.pts[k]; cx+=p[0];cy+=p[1];cz+=p[2];n++; }
   cx/=n; cy/=n; cz/=n;
@@ -200,7 +202,7 @@ const REF_RADIUS=(()=>{
     const p=wd.pts[k], d=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz);
     if(d>r) r=d;
   }
-  return r;
+  return r*1.5;
 })();
 let zoom=1;
 let az=VIEW_AZ, el=VIEW_EL;
@@ -429,27 +431,6 @@ if(cv){
 
   const preset=document.getElementById("preset");
   preset.onchange=()=>setShape(preset.value.split("").map(Number));
-  document.getElementById("random").onclick=()=>{
-    for(let attempt=0; attempt<400; attempt++){
-      const occ=new Map(), tr=[];
-      let f=I4, ok=true;
-      const put=(k,nn)=>{ if(!occ.has(k)) occ.set(k,[]); occ.get(k).push(nn); };
-      put(cellOf(f).join(","), normOf(f));
-      for(let i=0;i<23;i++){
-        const order=[0,1,2,3].sort(()=>Math.random()-0.5);
-        let moved=false;
-        for(const t of order){
-          const nf=mul(f,JOINT[t]);
-          const k=cellOf(nf).join(","), nn=normOf(nf);
-          const c=occ.get(k);
-          if(c && (c.length>=2 || !opp(c[0],nn))) continue;
-          put(k,nn); f=nf; tr.push(t); moved=true; break;
-        }
-        if(!moved){ ok=false; break; }
-      }
-      if(ok){ setShape(tr); return; }
-    }
-  };
   window.addEventListener("resize",()=>draw());
   setShape(shape);
 }
