@@ -71,14 +71,13 @@
 
 <footer>
   <div class="shapes" id="shapes">
-    <button class="shape" type="button" data-code="00000000000000000000000">Straight</button>
     <button class="shape" type="button" data-code="13133131131331311313313">Ball</button>
     <button class="shape" type="button" data-code="20220202202000220002022">Cross</button>
     <button class="shape" type="button" data-code="30000001300000013000000">Triangle</button>
     <button class="shape" type="button" data-code="11111111111111111111111">Zigzag</button>
     <button class="shape" type="button" data-code="00110033001100330011003">Coronet</button>
     <button class="shape" type="button" data-code="10012321211233232123003">Three peaks</button>
-    <button id="stepsToggle" type="button" class="right">Show instructions</button>
+    <button id="stepsToggle" type="button" class="right">Hide instructions</button>
   </div>
   <div class="steps" id="steps"></div>
 </footer>
@@ -375,7 +374,7 @@ function foldingOrder(full){
 
 const TURN_NAME={1:"quarter turn",2:"half turn",3:"three-quarter turn"};
 
-let SHOW_STEPS=false;
+let SHOW_STEPS=true;
 
 function setShape(full){
   shape=full.slice();
