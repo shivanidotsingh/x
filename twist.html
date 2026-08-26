@@ -63,7 +63,7 @@
   <canvas id="cv"></canvas>
   <div class="stepnote" id="stepnote"></div>
   <div class="viewbtns">
-    <button class="icon" id="viewreset" title="Reset view">reset</button>
+    <button class="icon" id="randomBtn" title="A random shape built from a repeating motif">feeling lucky</button>
   </div>
 </main>
 
@@ -302,7 +302,19 @@ function draw(fast){
     for(const wd of wedges) for(const k of VK){ const p=wd.pts[k]; cx+=p[0];cy+=p[1];cz+=p[2];n++; }
     cx/=n; cy/=n; cz/=n;
   }
-  const s=Math.min(W,H)*0.44*zoom/REF_RADIUS, ox=W/2, oy=H/2;
+  /* A shape is always drawn at the same scale — that is the point of a fixed
+     reference. But the early stages of a fold are still nearly a straight bar,
+     two and a half times the width of the frame, and the swinging end leaves
+     the screen entirely. So while stepping, shrink by however much bigger the
+     current stage overflows the frame — just enough to fit, never more, and
+     never enlarged. The last step is exempt, so a finished shape is always at
+     true scale and shapes stay comparable with each other. */
+  let stage=1;
+  if(fitTo && step<order.length){
+    const r=radiusOf(wedges);
+    if(r>REF_RADIUS) stage=REF_RADIUS/r;
+  }
+  const s=Math.min(W,H)*0.44*zoom*stage/REF_RADIUS, ox=W/2, oy=H/2;
   const pr=p=>{
     const dx=p[0]-cx, dy=p[1]-cy, dz=p[2]-cz;
     return [ox+(dx*R[0]+dy*R[1]+dz*R[2])*s,
@@ -376,13 +388,22 @@ const TURN_NAME={1:"quarter turn",2:"half turn",3:"three-quarter turn"};
 
 let SHOW_STEPS=true;
 
-function setShape(full){
+function setShape(full,withSteps){
   shape=full.slice();
-  if(SHOW_STEPS){ order=foldingOrder(shape); goToStep(order.length); return; }
-  order=[]; step=0;
+  if(withSteps===undefined) withSteps=SHOW_STEPS;
+  const t=document.getElementById("stepsToggle");
+  if(t) t.textContent = withSteps ? "Hide instructions" : "Show instructions";
+  if(withSteps){
+    order=foldingOrder(shape);
+    fitTo=true;
+    goToStep(order.length);
+    return;
+  }
+  order=[]; step=0; fitTo=null;
   turns=shape.slice();
   document.getElementById("steps").innerHTML="";
-  document.getElementById("stepnote").classList.remove("show");
+  const note=document.getElementById("stepnote");
+  note.classList.remove("show"); note.textContent="";
   paintShapes();
   recompute();
 }
@@ -398,6 +419,16 @@ function stateAt(k){
 }
 let animRAF=0;
 let pinned=null;
+let fitTo=null;                 // radius of the finished shape, while stepping
+function radiusOf(ws){
+  const c=centreOf(ws);
+  let r=1;
+  for(const wd of ws) for(const k of VK){
+    const p=wd.pts[k], d=Math.hypot(p[0]-c[0],p[1]-c[1],p[2]-c[2]);
+    if(d>r) r=d;
+  }
+  return r;
+}
 function centreOf(ws){
   let cx=0,cy=0,cz=0,n=0;
   for(const wd of ws) for(const k of VK){ const p=wd.pts[k]; cx+=p[0];cy+=p[1];cz+=p[2];n++; }
@@ -473,6 +504,59 @@ function paintSteps(){
   flashNote(`joint ${j+1}, ${TURN_NAME[shape[j]]}`);
 }
 
+/* ---------- curated random ----------
+   A random 23-digit string is almost always a tangle, because tangles are
+   almost all of the space. Every shape worth looking at — Ball, Propeller,
+   Spiral square, Coronet — turns out to be a short motif repeated. So this
+   samples repeating patterns of period 3 to 6 instead, deduplicated by the
+   shape they produce rather than by the pattern, so the 45 period-3 shapes
+   are not drowned out by the 2274 at period 6. About 3000 candidates, none
+   of them junk. The trade: figurative shapes are not periodic, so this will
+   never produce a cat.                                                      */
+let POOL=null, lastPick="";
+function buildPool(){
+  const seen=new Set(), buckets={3:[],4:[],5:[],6:[]};
+  for(let p=3;p<=6;p++){
+    for(let code=0;code<Math.pow(4,p);code++){
+      const pat=[]; let c=code;
+      for(let i=0;i<p;i++){ pat.push(c&3); c>>=2; }
+      if(pat.every(v=>!v)) continue;
+      let min=p;                                   // shortest motif that repeats
+      for(let q=1;q<p;q++){
+        if(p%q) continue;
+        let ok=true;
+        for(let i=q;i<p;i++) if(pat[i]!==pat[i%q]){ ok=false; break; }
+        if(ok){ min=q; break; }
+      }
+      if(min<3) continue;                          // period 1 and 2 are too plain
+      const t=[]; for(let i=0;i<23;i++) t.push(pat[i%p]);
+      const ws=build(t);
+      if(analyse(ws).bad.size) continue;
+      const cells=ws.map(w=>w.cell);
+      const mn=[0,1,2].map(k=>Math.min(...cells.map(c2=>c2[k])));
+      const key=cells.map((c2,i)=>c2.map((v,d)=>v-mn[d]).join(",")+":"+ws[i].n.join(",")).sort().join("|");
+      if(seen.has(key)) continue;
+      seen.add(key); buckets[min].push(t);
+    }
+  }
+  return buckets;
+}
+function randomShape(){
+  if(!POOL) POOL=buildPool();
+  /* Pick the period first, then a shape inside it. Sampling shapes directly
+     would land on period 6 three quarters of the time, simply because there
+     are more of them — and the short motifs are the ones with visible rhythm. */
+  const periods=[3,4,5,6].filter(p=>POOL[p].length);
+  let pick="";
+  for(let tries=0; tries<20; tries++){
+    const p=periods[Math.floor(Math.random()*periods.length)];
+    const list=POOL[p];
+    const t=list[Math.floor(Math.random()*list.length)];
+    pick=t.join("");
+    if(pick!==lastPick){ lastPick=pick; setShape(t,false); return; }
+  }
+}
+
 /* ---------- ui ---------- */
 function recompute(){
   wedges=build(turns);
@@ -504,7 +588,6 @@ if(cv){
     clearTimeout(cv._zt); cv._zt=setTimeout(()=>draw(),140);
   },{passive:false});
 
-  document.getElementById("viewreset").onclick=()=>{ az=VIEW_AZ; el=VIEW_EL; zoom=1; draw(); };
 
   window.addEventListener("keydown",e=>{
     if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
@@ -515,17 +598,19 @@ if(cv){
 
   for(const b of document.getElementById("shapes").children)
     if(b.dataset.code)
-      b.addEventListener("click",()=>setShape(b.dataset.code.split("").map(Number)));
+      b.addEventListener("click",()=>setShape(b.dataset.code.split("").map(Number), SHOW_STEPS));
+
+  document.getElementById("randomBtn").onclick=randomShape;
 
   const toggle=document.getElementById("stepsToggle");
   toggle.onclick=()=>{
-    SHOW_STEPS=!SHOW_STEPS;
-    toggle.textContent=SHOW_STEPS?"Hide instructions":"Show instructions";
+    SHOW_STEPS=!(document.getElementById("steps").children.length>0);
     document.getElementById("steps").innerHTML="";
-    setShape(shape);
+    setShape(shape, SHOW_STEPS);
   };
   window.addEventListener("resize",()=>draw());
   setShape(shape);
+  setTimeout(()=>{ if(!POOL) POOL=buildPool(); },0);   // ready before the first click
 }
 </script>
 </body>
