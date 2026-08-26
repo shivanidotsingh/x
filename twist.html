@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title> ▀▄▀▄▀▄ </title>
+<title>▀▄▀▄▀▄</title>
 <style>
   :root{
     --paper:#E4E1DB; --paper-2:#EDEBE6; --ink:#2E2B26; --ink-2:#6E6960;
@@ -422,7 +422,14 @@ function goToStep(k,animate){
 }
 function runTurn(j,from,to){
   cancelAnimationFrame(animRAF);
-  const a0=from*Math.PI/2, a1=to*Math.PI/2, dur=380;
+  /* Three quarter-turns one way is one quarter-turn the other, and the state
+     that lands is identical, so always sweep the short arc — it reads better
+     and sweeps less space. Half turns are a tie; going +2 forward and -2 back
+     means undoing a step retraces the path it came by. */
+  let d=to-from;
+  if(d>2) d-=4; else if(d<-2) d+=4;
+  const a0=from*Math.PI/2, a1=(from+d)*Math.PI/2;
+  const dur=280+100*Math.abs(d);
   pinned=centreOf(build(turns));
   const t0=performance.now();
   (function frame(now){
