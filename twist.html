@@ -72,7 +72,6 @@
     <button class="shape" type="button" data-code="13133131131331311313313">Ball</button>
     <button class="shape" type="button" data-code="20220202202000220002022">Cross</button>
     <button class="shape" type="button" data-code="30000001300000013000000">Triangle</button>
-    <button class="shape" type="button" data-code="11111111111111111111111">Zigzag</button>
     <button class="shape" type="button" data-code="00110033001100330011003">Coronet</button>
     <button class="shape" type="button" data-code="10012321211233232123003">Three peaks</button>
     <button class="shape" type="button" data-code="13331013331013331013331">Spiral square</button>
@@ -309,12 +308,22 @@ function draw(fast){
      current stage overflows the frame — just enough to fit, never more, and
      never enlarged. The last step is exempt, so a finished shape is always at
      true scale and shapes stay comparable with each other. */
-  let stage=1;
+  let s=Math.min(W,H)*0.50*zoom/REF_RADIUS;
   if(fitTo && step<order.length){
-    const r=radiusOf(wedges);
-    if(r>REF_RADIUS) stage=REF_RADIUS/r;
+    /* An intermediate stage is scaffolding, not a shape, so it may use the
+       whole window rather than the square that guarantees a fixed scale in
+       any orientation. Measure what it actually projects to and fit that. */
+    let ax=Infinity,bx=-Infinity,ay=Infinity,by=-Infinity;
+    for(const wd of wedges) for(const k of VK){
+      const p=wd.pts[k];
+      const dx=p[0]-cx, dy=p[1]-cy, dz=p[2]-cz;
+      const u=dx*R[0]+dy*R[1]+dz*R[2], v=dx*U[0]+dy*U[1]+dz*U[2];
+      if(u<ax)ax=u; if(u>bx)bx=u; if(v<ay)ay=v; if(v>by)by=v;
+    }
+    const fit=Math.min((W-14)/Math.max(1e-6,bx-ax), (H-14)/Math.max(1e-6,by-ay))*zoom;
+    if(fit<s) s=fit;
   }
-  const s=Math.min(W,H)*0.44*zoom*stage/REF_RADIUS, ox=W/2, oy=H/2;
+  const ox=W/2, oy=H/2;
   const pr=p=>{
     const dx=p[0]-cx, dy=p[1]-cy, dz=p[2]-cz;
     return [ox+(dx*R[0]+dy*R[1]+dz*R[2])*s,
@@ -536,6 +545,20 @@ function buildPool(){
       const mn=[0,1,2].map(k=>Math.min(...cells.map(c2=>c2[k])));
       const key=cells.map((c2,i)=>c2.map((v,d)=>v-mn[d]).join(",")+":"+ws[i].n.join(",")).sort().join("|");
       if(seen.has(key)) continue;
+      /* Reject the sprawling, snakey ones. Radius keeps it compact enough to
+         fill the frame; end-to-end distance keeps it curled rather than
+         trailing off, which is what separates a sculpture from a worm. */
+      const pts=ws.flatMap(w=>Object.values(w.pts));
+      const ctr=[0,1,2].map(k=>pts.reduce((a,q)=>a+q[k],0)/pts.length);
+      let rad=0;
+      for(const q of pts){
+        const d=Math.hypot(q[0]-ctr[0],q[1]-ctr[1],q[2]-ctr[2]);
+        if(d>rad) rad=d;
+      }
+      if(rad>7) continue;
+      const mid=w=>{const v=Object.values(w.pts);return [0,1,2].map(k=>v.reduce((a,q)=>a+q[k],0)/v.length)};
+      const e0=mid(ws[0]), e1=mid(ws[23]);
+      if(Math.hypot(e0[0]-e1[0],e0[1]-e1[1],e0[2]-e1[2])>8) continue;
       seen.add(key); buckets[min].push(t);
     }
   }
