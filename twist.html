@@ -63,8 +63,6 @@
   <canvas id="cv"></canvas>
   <div class="stepnote" id="stepnote"></div>
   <div class="viewbtns">
-    <button class="icon" id="rotL" title="Rotate left">&#8630;</button>
-    <button class="icon" id="rotR" title="Rotate right">&#8631;</button>
     <button class="icon" id="viewreset" title="Reset view">reset</button>
   </div>
 </main>
@@ -77,6 +75,8 @@
     <button class="shape" type="button" data-code="11111111111111111111111">Zigzag</button>
     <button class="shape" type="button" data-code="00110033001100330011003">Coronet</button>
     <button class="shape" type="button" data-code="10012321211233232123003">Three peaks</button>
+    <button class="shape" type="button" data-code="13331013331013331013331">Spiral square</button>
+    <button class="shape" type="button" data-code="13103000131030001310300">Propeller</button>
     <button id="stepsToggle" type="button" class="right">Hide instructions</button>
   </div>
   <div class="steps" id="steps"></div>
@@ -216,7 +216,7 @@ const REF_RADIUS=(()=>{
     const p=wd.pts[k], d=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz);
     if(d>r) r=d;
   }
-  return r*1.852;   // the Ball plus headroom; larger divisor = smaller glyphs
+  return r*2.058;   // the Ball plus headroom; larger divisor = smaller glyphs
 })();
 let zoom=1;
 let az=VIEW_AZ, el=VIEW_EL;
@@ -504,8 +504,6 @@ if(cv){
     clearTimeout(cv._zt); cv._zt=setTimeout(()=>draw(),140);
   },{passive:false});
 
-  document.getElementById("rotL").onclick=()=>{ az-=Math.PI/12; draw(); };
-  document.getElementById("rotR").onclick=()=>{ az+=Math.PI/12; draw(); };
   document.getElementById("viewreset").onclick=()=>{ az=VIEW_AZ; el=VIEW_EL; zoom=1; draw(); };
 
   window.addEventListener("keydown",e=>{
