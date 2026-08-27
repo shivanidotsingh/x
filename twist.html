@@ -40,7 +40,6 @@
   .hintnote.show{opacity:1}
   .hint2{top:38px}
 .shapes{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
-  .shapes .right{margin-left:auto}
   .shape.on{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
 </style>
 </head>
@@ -69,7 +68,6 @@
     <button class="shape" type="button" data-code="10012321211233232123003">Three peaks</button>
     <button class="shape" type="button" data-code="13331013331013331013331">Spiral square</button>
     <button class="shape" type="button" data-code="13103000131030001310300">Propeller</button>
-    <button id="stepsToggle" type="button" class="right">Hide instructions</button>
   </div>
 </footer>
 
@@ -390,13 +388,11 @@ function foldingOrder(full){
    the instructions are not offered at all rather than offered and unusable. */
 const TOUCH = typeof window!=="undefined" && window.matchMedia
               && window.matchMedia("(pointer: coarse)").matches;
-let SHOW_STEPS=!TOUCH;
+const SHOW_STEPS=!TOUCH;
 
 function setShape(full,withSteps){
   shape=full.slice();
   if(withSteps===undefined) withSteps=SHOW_STEPS;
-  const t=document.getElementById("stepsToggle");
-  if(t) t.textContent = withSteps ? "Hide instructions" : "Show instructions";
   if(withSteps){
     order=foldingOrder(shape);
     fitTo=true;
@@ -561,14 +557,12 @@ function enterFlip(){
   flipMode=true;
   if(!REEL) REEL=buildReel();
   document.getElementById("flipBtn").textContent=TOUCH?"next":"exit";
-  document.getElementById("stepsToggle").style.display="none";
   setHint("\u2190 flip through \u2192", "\u2191 arrow keys \u2193 for another sequence");
   showFrame(0,0);
 }
 function exitFlip(){
   flipMode=false;
   document.getElementById("flipBtn").textContent="feeling lucky";
-  document.getElementById("stepsToggle").style.display="";
   setHint("");
   az=VIEW_AZ; el=VIEW_EL;
   setShape(shape, SHOW_STEPS);
@@ -642,13 +636,6 @@ if(cv){
     } else exitFlip();
   };
 
-  const toggle=document.getElementById("stepsToggle");
-  if(TOUCH) toggle.style.display="none";
-  toggle.onclick=()=>{
-    exitFlip();
-    SHOW_STEPS=!SHOW_STEPS;
-      setShape(shape, SHOW_STEPS);
-  };
   window.addEventListener("resize",()=>draw());
   setShape(shape);
 }
