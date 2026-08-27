@@ -35,11 +35,17 @@
   button:focus-visible, select:focus-visible{outline:2px solid var(--ink); outline-offset:1px}
   button.icon{padding:5px 8px; min-width:30px}
   footer{border-top:1px solid var(--line); padding:12px 20px 16px; background:var(--paper-2)}
-  .hintnote{position:absolute; left:20px; top:16px; font-size:12.5px; color:var(--ink-2);
-    pointer-events:none; opacity:0; transition:opacity .3s ease}
-  .hintnote.show{opacity:1}
-  .hint2{top:38px}
-.shapes{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.shapes{display:flex; gap:6px; flex-wrap:wrap; align-items:center; justify-content:center}
+  .arrow{position:absolute; padding:4px 9px; font-size:15px; line-height:1;
+    background:var(--paper-2); border:1px solid var(--line-2); border-radius:6px;
+    color:var(--ink); cursor:pointer; opacity:.85}
+  .arrow:hover{opacity:1; background:#fff}
+  .arrow[hidden]{display:none}
+  .arrow:disabled{opacity:.25; cursor:default}
+  #aLeft{left:20px; top:50%; transform:translateY(-50%)}
+  #aRight{right:20px; top:50%; transform:translateY(-50%)}
+  #aUp{top:14px; left:50%; transform:translateX(-50%)}
+  #aDown{bottom:14px; left:50%; transform:translateX(-50%)}
   .shape.on{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
 </style>
 </head>
@@ -52,8 +58,10 @@
 
 <main>
   <canvas id="cv"></canvas>
-  <div class="hintnote" id="hintnote"></div>
-  <div class="hintnote hint2" id="hintnote2"></div>
+  <button class="arrow" id="aLeft"  title="untwist">&#8592;</button>
+  <button class="arrow" id="aRight" title="twist">&#8594;</button>
+  <button class="arrow" id="aUp"    title="previous in sequence">&#8593;</button>
+  <button class="arrow" id="aDown"  title="next in sequence">&#8595;</button>
   <div class="viewbtns">
     <button class="icon" id="flipBtn" title="A sequence of related shapes — arrow keys to flip through">feeling lucky</button>
   </div>
@@ -384,24 +392,22 @@ function foldingOrder(full){
 }
 
 
-/* A step-through needs arrow keys, and a phone has none. On a coarse pointer
-   the instructions are not offered at all rather than offered and unusable. */
-const TOUCH = typeof window!=="undefined" && window.matchMedia
-              && window.matchMedia("(pointer: coarse)").matches;
-const SHOW_STEPS=!TOUCH;
+/* The step-through used to be keyboard-only, so it was withheld on phones.
+   Now that the arrows are buttons it works with a finger, and the special
+   case is gone: every device gets the same thing. */
+const SHOW_STEPS=true;
 
 function setShape(full,withSteps){
   shape=full.slice();
+  [seqSet,seqFrame]=locate(shape.join(""));
   if(withSteps===undefined) withSteps=SHOW_STEPS;
   if(withSteps){
     order=foldingOrder(shape);
     fitTo=true;
     goToStep(order.length);
-    setHint("\u2190 untwist/ twist \u2192");
     return;
   }
   order=[]; step=0; fitTo=null;
-  if(!flipMode) setHint("");
   turns=shape.slice();
   paintShapes();
   recompute();
@@ -410,6 +416,16 @@ function paintShapes(){
   const code=shape.join("");
   for(const b of document.getElementById("shapes").children)
     b.classList.toggle("on", b.dataset.code===code);
+  paintArrows();
+}
+function paintArrows(){
+  const L=document.getElementById("aLeft"), R=document.getElementById("aRight");
+  const U=document.getElementById("aUp"),   D=document.getElementById("aDown");
+  if(!L) return;
+  L.disabled = !(step>1);
+  R.disabled = !(step<order.length);
+  const inSeq = seqSet>=0;
+  U.hidden = D.hidden = !inSeq;
 }
 function stateAt(k){
   const t=new Array(23).fill(0);
@@ -473,14 +489,6 @@ function runTurn(j,from,to){
     }
   })(t0);
 }
-function setHint(a,b){
-  if(TOUCH){ a=""; b=""; }
-  for(const [id,t] of [["hintnote",a],["hintnote2",b]]){
-    const h=document.getElementById(id);
-    h.textContent=t||"";
-    h.classList.toggle("show", !!t);
-  }
-}
 /* ---------- flip book ----------
    Stop motion, so every frame is a complete settled shape — no tweening, no
    half-turned joints, nothing the toy could not actually hold. The motion is
@@ -529,11 +537,12 @@ const SETS=[
     "10030000100300001003000 1 1 1"
   ]}
 ];
-let REEL=null, flipMode=false, flipIndex=0, flipFrame=0;
+let REEL=null;
+let seqSet=-1, seqFrame=0;      // which sequence the current shape sits in
 function buildReel(){
   return SETS.map(S=>({ name:S.name, frames:S.frames.map(row=>{
     const f=row.split(" ");
-    return { turns:f[0].split("").map(Number), ax:[+f[1],+f[2],+f[3]] };
+    return { turns:f[0].split("").map(Number), code:f[0], ax:[+f[1],+f[2],+f[3]] };
   })}));
 }
 function axisView(ax){
@@ -543,32 +552,82 @@ function axisView(ax){
   const el2=Math.asin(a[2]) + 6*Math.PI/180;
   return [az2, Math.max(-1.45, Math.min(1.45, el2))];
 }
-function showFrame(si,fi){
-  const ns=REEL.length;
-  flipIndex=((si%ns)+ns)%ns;
-  const set=REEL[flipIndex], nf=set.frames.length;
-  flipFrame=((fi%nf)+nf)%nf;
-  const f=set.frames[flipFrame];
-  [az,el]=axisView(f.ax);
-  zoom=1;
-  setShape(f.turns, false);
-}
-function enterFlip(){
-  flipMode=true;
+/* A shape knows whether it belongs to a sequence. Spiral square sits inside
+   the aperture run and Propeller inside the turning one, so landing on either
+   quietly puts the up and down arrows within reach; every other shape has no
+   sequence and they stay hidden. */
+function locate(code){
   if(!REEL) REEL=buildReel();
-  document.getElementById("flipBtn").textContent=TOUCH?"next":"exit";
-  setHint("\u2190 flip through \u2192", "\u2191 arrow keys \u2193 for another sequence");
-  showFrame(0,0);
+  for(let i=0;i<REEL.length;i++){
+    const j=REEL[i].frames.findIndex(f=>f.code===code);
+    if(j>=0) return [i,j];
+  }
+  return [-1,0];
 }
-function exitFlip(){
-  flipMode=false;
-  document.getElementById("flipBtn").textContent="feeling lucky";
-  setHint("");
-  az=VIEW_AZ; el=VIEW_EL;
-  setShape(shape, SHOW_STEPS);
+function seqStep(d){
+  if(seqSet<0) return;
+  const set=REEL[seqSet], n=set.frames.length;
+  const f=set.frames[((seqFrame+d)%n+n)%n];
+  [az,el]=axisView(f.ax);          // look down its axis so the run reads
+  setShape(f.turns);
 }
 
-
+/* ---------- curated random ----------
+   A random 23-digit string is almost always a tangle. Every shape worth
+   looking at is a short motif repeated, so this samples repeating patterns of
+   period 3 to 6, keeps the compact ones whose ends finish near each other,
+   and picks the period first so the few short motifs are not drowned by the
+   many long ones. */
+let POOL=null, lastPick="";
+function buildPool(){
+  const seen=new Set(), buckets={3:[],4:[],5:[],6:[]};
+  for(let p=3;p<=6;p++){
+    for(let code=0;code<Math.pow(4,p);code++){
+      const pat=[]; let c=code;
+      for(let i=0;i<p;i++){ pat.push(c&3); c>>=2; }
+      if(pat.every(v=>!v)) continue;
+      let min=p;
+      for(let q=1;q<p;q++){
+        if(p%q) continue;
+        let ok=true;
+        for(let i=q;i<p;i++) if(pat[i]!==pat[i%q]){ ok=false; break; }
+        if(ok){ min=q; break; }
+      }
+      if(min<3) continue;
+      const t=[]; for(let i=0;i<23;i++) t.push(pat[i%p]);
+      const ws=build(t);
+      if(analyse(ws).bad.size) continue;
+      const cells=ws.map(w=>w.cell);
+      const mn=[0,1,2].map(k=>Math.min(...cells.map(c2=>c2[k])));
+      const key=cells.map((c2,i)=>c2.map((v,d)=>v-mn[d]).join(",")+":"+ws[i].n.join(",")).sort().join("|");
+      if(seen.has(key)) continue;
+      const pts=ws.flatMap(w=>Object.values(w.pts));
+      const ctr=[0,1,2].map(k=>pts.reduce((a,q)=>a+q[k],0)/pts.length);
+      let rad=0;
+      for(const q of pts){
+        const d=Math.hypot(q[0]-ctr[0],q[1]-ctr[1],q[2]-ctr[2]);
+        if(d>rad) rad=d;
+      }
+      if(rad>7) continue;
+      const mid=w=>{const v=Object.values(w.pts);return [0,1,2].map(k=>v.reduce((a,q)=>a+q[k],0)/v.length)};
+      const e0=mid(ws[0]), e1=mid(ws[23]);
+      if(Math.hypot(e0[0]-e1[0],e0[1]-e1[1],e0[2]-e1[2])>8) continue;
+      seen.add(key); buckets[min].push(t);
+    }
+  }
+  return buckets;
+}
+function randomShape(){
+  if(!POOL) POOL=buildPool();
+  const periods=[3,4,5,6].filter(p=>POOL[p].length);
+  for(let tries=0; tries<20; tries++){
+    const p=periods[Math.floor(Math.random()*periods.length)];
+    const list=POOL[p];
+    const t=list[Math.floor(Math.random()*list.length)];
+    const code=t.join("");
+    if(code!==lastPick){ lastPick=code; setShape(t); return; }
+  }
+}
 
 /* ---------- ui ---------- */
 function recompute(){
@@ -580,7 +639,6 @@ function recompute(){
 if(cv){
   let dragging=false, lastX=0, lastY=0;
   cv.addEventListener("pointerdown",e=>{
-    if(flipMode) return;
     dragging=true; lastX=e.clientX; lastY=e.clientY;
     cv.classList.add("dragging"); cv.setPointerCapture(e.pointerId);
   });
@@ -596,7 +654,6 @@ if(cv){
   cv.addEventListener("pointercancel",endDrag);
 
   cv.addEventListener("wheel",e=>{
-    if(flipMode) return;
     e.preventDefault();
     zoom=Math.max(0.6, Math.min(8, zoom*Math.exp(-e.deltaY*0.0015)));
     draw(true);
@@ -606,38 +663,26 @@ if(cv){
 
   window.addEventListener("keydown",e=>{
     if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
-    if(flipMode){
-      if(e.key==="ArrowLeft"){ showFrame(flipIndex,flipFrame-1); e.preventDefault(); }
-      else if(e.key==="ArrowRight"){ showFrame(flipIndex,flipFrame+1); e.preventDefault(); }
-      else if(e.key==="ArrowDown"){ showFrame(flipIndex-1,0); e.preventDefault(); }
-      else if(e.key==="ArrowUp"){ showFrame(flipIndex+1,0); e.preventDefault(); }
-      return;
-    }
-    if(!SHOW_STEPS) return;
     if(e.key==="ArrowLeft"&&step>1){ goToStep(step-1,true); e.preventDefault(); }
     else if(e.key==="ArrowRight"&&step<order.length){ goToStep(step+1,true); e.preventDefault(); }
+    else if(e.key==="ArrowUp"&&seqSet>=0){ seqStep(-1); e.preventDefault(); }
+    else if(e.key==="ArrowDown"&&seqSet>=0){ seqStep(1); e.preventDefault(); }
   });
 
   for(const b of document.getElementById("shapes").children)
     if(b.dataset.code)
-      b.addEventListener("click",()=>{
-        if(flipMode){ shape=b.dataset.code.split("").map(Number); exitFlip(); return; }
-        setShape(b.dataset.code.split("").map(Number), SHOW_STEPS);
-      });
+      b.addEventListener("click",()=>setShape(b.dataset.code.split("").map(Number)));
 
-  document.getElementById("flipBtn").onclick=()=>{
-    if(!flipMode){ enterFlip(); return; }
-    /* With no arrow keys, the button is the only control: each tap advances a
-       frame and rolls on into the next set. Tapping a shape leaves. */
-    if(TOUCH){
-      const set=REEL[flipIndex];
-      if(flipFrame+1 < set.frames.length) showFrame(flipIndex, flipFrame+1);
-      else showFrame(flipIndex+1, 0);
-    } else exitFlip();
-  };
+  document.getElementById("flipBtn").onclick=randomShape;
+
+  document.getElementById("aLeft").onclick =()=>{ if(step>1) goToStep(step-1,true); };
+  document.getElementById("aRight").onclick=()=>{ if(step<order.length) goToStep(step+1,true); };
+  document.getElementById("aUp").onclick   =()=>seqStep(-1);
+  document.getElementById("aDown").onclick =()=>seqStep(1);
 
   window.addEventListener("resize",()=>draw());
   setShape(shape);
+  setTimeout(()=>{ if(!POOL) POOL=buildPool(); },0);   // ready before the first roll
 }
 </script>
 </body>
