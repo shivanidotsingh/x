@@ -35,21 +35,13 @@
   button:focus-visible, select:focus-visible{outline:2px solid var(--ink); outline-offset:1px}
   button.icon{padding:5px 8px; min-width:30px}
   footer{border-top:1px solid var(--line); padding:12px 20px 16px; background:var(--paper-2)}
-.steps{display:flex; gap:4px; flex-wrap:wrap; margin-top:14px}
-  .step{width:27px; height:27px; padding:0; border-radius:5px; background:#fff;
-    border:1px solid var(--line-2); color:var(--ink-2); cursor:pointer;
-    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px;
-    display:flex; align-items:center; justify-content:center}
-  .step:hover{background:var(--paper)}
-  .step.done{background:var(--paper); color:var(--ink)}
-  .step.on{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
-  .stepnote{position:absolute; left:20px; top:16px; font-size:12.5px; color:var(--ink-2);
-    pointer-events:none; opacity:0; transition:opacity .45s ease}
-  .stepnote.show{opacity:1; transition:opacity .12s ease}
+  .hintnote{position:absolute; left:20px; top:16px; font-size:12.5px; color:var(--ink-2);
+    pointer-events:none; opacity:0; transition:opacity .3s ease}
+  .hintnote.show{opacity:1}
+  .hint2{top:38px}
 .shapes{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
   .shapes .right{margin-left:auto}
   .shape.on{background:var(--ink); border-color:var(--ink); color:var(--paper-2)}
-  .steps:empty{display:none}
 </style>
 </head>
 <body>
@@ -61,9 +53,10 @@
 
 <main>
   <canvas id="cv"></canvas>
-  <div class="stepnote" id="stepnote"></div>
+  <div class="hintnote" id="hintnote"></div>
+  <div class="hintnote hint2" id="hintnote2"></div>
   <div class="viewbtns">
-    <button class="icon" id="randomBtn" title="A random shape built from a repeating motif">feeling lucky</button>
+    <button class="icon" id="flipBtn" title="A sequence of related shapes — arrow keys to flip through">feeling lucky</button>
   </div>
 </main>
 
@@ -78,7 +71,6 @@
     <button class="shape" type="button" data-code="13103000131030001310300">Propeller</button>
     <button id="stepsToggle" type="button" class="right">Hide instructions</button>
   </div>
-  <div class="steps" id="steps"></div>
 </footer>
 
 <script>
@@ -393,9 +385,12 @@ function foldingOrder(full){
   return dfs() ? out : idx;
 }
 
-const TURN_NAME={1:"quarter turn",2:"half turn",3:"three-quarter turn"};
 
-let SHOW_STEPS=true;
+/* A step-through needs arrow keys, and a phone has none. On a coarse pointer
+   the instructions are not offered at all rather than offered and unusable. */
+const TOUCH = typeof window!=="undefined" && window.matchMedia
+              && window.matchMedia("(pointer: coarse)").matches;
+let SHOW_STEPS=!TOUCH;
 
 function setShape(full,withSteps){
   shape=full.slice();
@@ -406,13 +401,12 @@ function setShape(full,withSteps){
     order=foldingOrder(shape);
     fitTo=true;
     goToStep(order.length);
+    setHint("\u2190 arrow keys \u2192 to untwist");
     return;
   }
   order=[]; step=0; fitTo=null;
+  if(!flipMode) setHint("");
   turns=shape.slice();
-  document.getElementById("steps").innerHTML="";
-  const note=document.getElementById("stepnote");
-  note.classList.remove("show"); note.textContent="";
   paintShapes();
   recompute();
 }
@@ -448,7 +442,6 @@ function goToStep(k,animate){
   step=k;
   turns=stateAt(k);
   paintShapes();
-  paintSteps();
   if(animate && order.length && Math.abs(k-prev)===1){
     const j=order[Math.max(k,prev)-1];
     const t=shape[j];
@@ -484,101 +477,104 @@ function runTurn(j,from,to){
     }
   })(t0);
 }
-let noteTimer=0;
-function flashNote(text){
-  const note=document.getElementById("stepnote");
-  note.textContent=text;
-  note.classList.add("show");
-  clearTimeout(noteTimer);
-  noteTimer=setTimeout(()=>note.classList.remove("show"), 2600);
+function setHint(a,b){
+  if(TOUCH){ a=""; b=""; }
+  for(const [id,t] of [["hintnote",a],["hintnote2",b]]){
+    const h=document.getElementById(id);
+    h.textContent=t||"";
+    h.classList.toggle("show", !!t);
+  }
 }
-function paintSteps(){
-  const row=document.getElementById("steps");
-  if(order.length!==row.children.length){
-    row.innerHTML="";
-    for(let i=1;i<=order.length;i++){
-      const b=document.createElement("button");
-      b.className="step"; b.type="button"; b.textContent=i;
-      b.addEventListener("click",()=>goToStep(i,true));
-      row.appendChild(b);
-    }
-  }
-  for(let i=1;i<=order.length;i++){
-    const b=row.children[i-1];
-    b.classList.toggle("on", i===step);
-    b.classList.toggle("done", i<step);
-  }
-  if(!order.length){ flashNote("No turns — this is the rest position."); return; }
-  const j=order[step-1];
-  flashNote(`joint ${j+1}, ${TURN_NAME[shape[j]]}`);
+/* ---------- flip book ----------
+   Stop motion, so every frame is a complete settled shape — no tweening, no
+   half-turned joints, nothing the toy could not actually hold. The motion is
+   an illusion assembled from the differences between finished poses.
+
+   What makes a run read as movement is not that consecutive frames are
+   similar — ordering by similarity gives a shape that jitters in place, which
+   was the first attempt and it did not work. It is that some measured
+   property changes steadily in one direction. Here that property is how open
+   the form is: each shape is projected down its own symmetry axis, the
+   enclosed background is measured, and the set is sampled evenly across that
+   range. A closed form becomes a square hole, a star, a cross, a ring.
+
+   Aperture is not the only property that works. The third set is ordered by
+   rotational phase instead — which way the points of the star face, folded
+   into one sector of the symmetry — so the form appears to turn on the spot
+   rather than open. Depth, apparent size and elongation were also tried and
+   read as noise: their values cluster instead of spreading.                  */
+const SETS=[
+  { name:"aperture", frames:[
+    "31331311313313113133131 0 0 1",
+    "12332012332012332012332 0 1 0",
+    "13231113231113231113231 0 1 0",
+    "10132010132010132010132 0 1 0",
+    "23101023101023101023101 0 1 0",
+    "31131031131031131031131 0 1 0",
+    "13331013331013331013331 0 1 0",
+    "31113031113031113031113 0 1 0",
+    "10112010112010112010112 0 1 0",
+    "21101021101021101021101 0 1 0"
+  ]},
+  { name:"propeller", frames:[
+    "12331110123311101233111 1 1 1",
+    "13103000131030001310300 1 1 1",
+    "13202301132023011320230 1 1 1",
+    "20012331200123312001233 1 1 1",
+    "11212300112123001121230 1 1 1",
+    "10212301102123011021230 1 1 1",
+    "20021001200210012002100 1 1 1",
+    "32011100320111003201110 1 1 1",
+    "11211130112111301121113 1 1 1",
+    "11133030111330301113303 1 1 1",
+    "11121000111210001112100 1 1 1",
+    "11023010110230101102301 1 1 1",
+    "11110110111101101111011 1 1 1",
+    "10030000100300001003000 1 1 1"
+  ]}
+];
+let REEL=null, flipMode=false, flipIndex=0, flipFrame=0;
+function buildReel(){
+  return SETS.map(S=>({ name:S.name, frames:S.frames.map(row=>{
+    const f=row.split(" ");
+    return { turns:f[0].split("").map(Number), ax:[+f[1],+f[2],+f[3]] };
+  })}));
+}
+function axisView(ax){
+  const n=Math.hypot(ax[0],ax[1],ax[2]);
+  const a=[ax[0]/n, ax[1]/n, ax[2]/n];
+  const az2=Math.atan2(a[1],a[0]) + 7*Math.PI/180;
+  const el2=Math.asin(a[2]) + 6*Math.PI/180;
+  return [az2, Math.max(-1.45, Math.min(1.45, el2))];
+}
+function showFrame(si,fi){
+  const ns=REEL.length;
+  flipIndex=((si%ns)+ns)%ns;
+  const set=REEL[flipIndex], nf=set.frames.length;
+  flipFrame=((fi%nf)+nf)%nf;
+  const f=set.frames[flipFrame];
+  [az,el]=axisView(f.ax);
+  zoom=1;
+  setShape(f.turns, false);
+}
+function enterFlip(){
+  flipMode=true;
+  if(!REEL) REEL=buildReel();
+  document.getElementById("flipBtn").textContent=TOUCH?"next":"exit";
+  document.getElementById("stepsToggle").style.display="none";
+  setHint("\u2190 arrow keys \u2192 to flip", "\u2191 arrow keys \u2193 for another set");
+  showFrame(0,0);
+}
+function exitFlip(){
+  flipMode=false;
+  document.getElementById("flipBtn").textContent="feeling lucky";
+  document.getElementById("stepsToggle").style.display="";
+  setHint("");
+  az=VIEW_AZ; el=VIEW_EL;
+  setShape(shape, SHOW_STEPS);
 }
 
-/* ---------- curated random ----------
-   A random 23-digit string is almost always a tangle, because tangles are
-   almost all of the space. Every shape worth looking at — Ball, Propeller,
-   Spiral square, Coronet — turns out to be a short motif repeated. So this
-   samples repeating patterns of period 3 to 6 instead, deduplicated by the
-   shape they produce rather than by the pattern, so the 45 period-3 shapes
-   are not drowned out by the 2274 at period 6. About 3000 candidates, none
-   of them junk. The trade: figurative shapes are not periodic, so this will
-   never produce a cat.                                                      */
-let POOL=null, lastPick="";
-function buildPool(){
-  const seen=new Set(), buckets={3:[],4:[],5:[],6:[]};
-  for(let p=3;p<=6;p++){
-    for(let code=0;code<Math.pow(4,p);code++){
-      const pat=[]; let c=code;
-      for(let i=0;i<p;i++){ pat.push(c&3); c>>=2; }
-      if(pat.every(v=>!v)) continue;
-      let min=p;                                   // shortest motif that repeats
-      for(let q=1;q<p;q++){
-        if(p%q) continue;
-        let ok=true;
-        for(let i=q;i<p;i++) if(pat[i]!==pat[i%q]){ ok=false; break; }
-        if(ok){ min=q; break; }
-      }
-      if(min<3) continue;                          // period 1 and 2 are too plain
-      const t=[]; for(let i=0;i<23;i++) t.push(pat[i%p]);
-      const ws=build(t);
-      if(analyse(ws).bad.size) continue;
-      const cells=ws.map(w=>w.cell);
-      const mn=[0,1,2].map(k=>Math.min(...cells.map(c2=>c2[k])));
-      const key=cells.map((c2,i)=>c2.map((v,d)=>v-mn[d]).join(",")+":"+ws[i].n.join(",")).sort().join("|");
-      if(seen.has(key)) continue;
-      /* Reject the sprawling, snakey ones. Radius keeps it compact enough to
-         fill the frame; end-to-end distance keeps it curled rather than
-         trailing off, which is what separates a sculpture from a worm. */
-      const pts=ws.flatMap(w=>Object.values(w.pts));
-      const ctr=[0,1,2].map(k=>pts.reduce((a,q)=>a+q[k],0)/pts.length);
-      let rad=0;
-      for(const q of pts){
-        const d=Math.hypot(q[0]-ctr[0],q[1]-ctr[1],q[2]-ctr[2]);
-        if(d>rad) rad=d;
-      }
-      if(rad>7) continue;
-      const mid=w=>{const v=Object.values(w.pts);return [0,1,2].map(k=>v.reduce((a,q)=>a+q[k],0)/v.length)};
-      const e0=mid(ws[0]), e1=mid(ws[23]);
-      if(Math.hypot(e0[0]-e1[0],e0[1]-e1[1],e0[2]-e1[2])>8) continue;
-      seen.add(key); buckets[min].push(t);
-    }
-  }
-  return buckets;
-}
-function randomShape(){
-  if(!POOL) POOL=buildPool();
-  /* Pick the period first, then a shape inside it. Sampling shapes directly
-     would land on period 6 three quarters of the time, simply because there
-     are more of them — and the short motifs are the ones with visible rhythm. */
-  const periods=[3,4,5,6].filter(p=>POOL[p].length);
-  let pick="";
-  for(let tries=0; tries<20; tries++){
-    const p=periods[Math.floor(Math.random()*periods.length)];
-    const list=POOL[p];
-    const t=list[Math.floor(Math.random()*list.length)];
-    pick=t.join("");
-    if(pick!==lastPick){ lastPick=pick; setShape(t,false); return; }
-  }
-}
+
 
 /* ---------- ui ---------- */
 function recompute(){
@@ -590,6 +586,7 @@ function recompute(){
 if(cv){
   let dragging=false, lastX=0, lastY=0;
   cv.addEventListener("pointerdown",e=>{
+    if(flipMode) return;
     dragging=true; lastX=e.clientX; lastY=e.clientY;
     cv.classList.add("dragging"); cv.setPointerCapture(e.pointerId);
   });
@@ -605,6 +602,7 @@ if(cv){
   cv.addEventListener("pointercancel",endDrag);
 
   cv.addEventListener("wheel",e=>{
+    if(flipMode) return;
     e.preventDefault();
     zoom=Math.max(0.6, Math.min(8, zoom*Math.exp(-e.deltaY*0.0015)));
     draw(true);
@@ -614,6 +612,13 @@ if(cv){
 
   window.addEventListener("keydown",e=>{
     if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
+    if(flipMode){
+      if(e.key==="ArrowLeft"){ showFrame(flipIndex,flipFrame-1); e.preventDefault(); }
+      else if(e.key==="ArrowRight"){ showFrame(flipIndex,flipFrame+1); e.preventDefault(); }
+      else if(e.key==="ArrowDown"){ showFrame(flipIndex-1,0); e.preventDefault(); }
+      else if(e.key==="ArrowUp"){ showFrame(flipIndex+1,0); e.preventDefault(); }
+      return;
+    }
     if(!SHOW_STEPS) return;
     if(e.key==="ArrowLeft"&&step>1){ goToStep(step-1,true); e.preventDefault(); }
     else if(e.key==="ArrowRight"&&step<order.length){ goToStep(step+1,true); e.preventDefault(); }
@@ -621,19 +626,31 @@ if(cv){
 
   for(const b of document.getElementById("shapes").children)
     if(b.dataset.code)
-      b.addEventListener("click",()=>setShape(b.dataset.code.split("").map(Number), SHOW_STEPS));
+      b.addEventListener("click",()=>{
+        if(flipMode){ shape=b.dataset.code.split("").map(Number); exitFlip(); return; }
+        setShape(b.dataset.code.split("").map(Number), SHOW_STEPS);
+      });
 
-  document.getElementById("randomBtn").onclick=randomShape;
+  document.getElementById("flipBtn").onclick=()=>{
+    if(!flipMode){ enterFlip(); return; }
+    /* With no arrow keys, the button is the only control: each tap advances a
+       frame and rolls on into the next set. Tapping a shape leaves. */
+    if(TOUCH){
+      const set=REEL[flipIndex];
+      if(flipFrame+1 < set.frames.length) showFrame(flipIndex, flipFrame+1);
+      else showFrame(flipIndex+1, 0);
+    } else exitFlip();
+  };
 
   const toggle=document.getElementById("stepsToggle");
+  if(TOUCH) toggle.style.display="none";
   toggle.onclick=()=>{
-    SHOW_STEPS=!(document.getElementById("steps").children.length>0);
-    document.getElementById("steps").innerHTML="";
-    setShape(shape, SHOW_STEPS);
+    exitFlip();
+    SHOW_STEPS=!SHOW_STEPS;
+      setShape(shape, SHOW_STEPS);
   };
   window.addEventListener("resize",()=>draw());
   setShape(shape);
-  setTimeout(()=>{ if(!POOL) POOL=buildPool(); },0);   // ready before the first click
 }
 </script>
 </body>
