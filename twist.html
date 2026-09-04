@@ -52,7 +52,7 @@
 <body>
 
 <header>
-  <h1>Thingamajig</h1>
+  <h1>thingamajig</h1>
   <span class="sub">24 wedges · 23 joints · <span class="mono">4<sup>23</sup></span> states</span>
 </header>
 
@@ -289,9 +289,12 @@ function draw(fast){
   const kl=[0.30,-0.40,0.87], kn=Math.hypot(kl[0],kl[1],kl[2]);
   const KEY=[kl[0]/kn, kl[1]/kn, kl[2]/kn];
 
-  // centre on the current shape, but never rescale to it. During a turn the
-  // centre is pinned to where the shape ends up, so the joint swings against a
-  // still background instead of the whole scene sliding.
+  /* Centre on the current shape, but never rescale to it. The centre is
+     pinned for the whole of a fold rather than recomputed each step: mass
+     migrates from the folded ball out along the unfolding tail, so a centre
+     of mass that is chased makes the entire object appear to slide when in
+     fact only one joint moved. Pinned once when a shape is chosen, released
+     when another is. */
   let cx,cy,cz;
   if(pinned){ [cx,cy,cz]=pinned; }
   else {
@@ -300,17 +303,15 @@ function draw(fast){
     cx/=n; cy/=n; cz/=n;
   }
   /* A shape is always drawn at the same scale — that is the point of a fixed
-     reference. But the early stages of a fold are still nearly a straight bar,
-     two and a half times the width of the frame, and the swinging end leaves
-     the screen entirely. So while stepping, shrink by however much bigger the
-     current stage overflows the frame — just enough to fit, never more, and
-     never enlarged. The last step is exempt, so a finished shape is always at
-     true scale and shapes stay comparable with each other. */
+     reference. But the early stages of a fold are nearly a straight bar, far
+     wider than the frame, and the swinging end leaves the screen. So the view
+     backs off to fit — and only ever backs off. Recomputing the fit from the
+     current geometry every frame made it pump in and out as a joint swung,
+     since the projected width changes through the arc. Holding the smallest
+     scale reached so far turns that into a slow retreat that never reverses.
+     Reset when a shape is chosen. */
   let s=Math.min(W,H)*0.50*zoom/REF_RADIUS;
-  if(fitTo && step<order.length){
-    /* An intermediate stage is scaffolding, not a shape, so it may use the
-       whole window rather than the square that guarantees a fixed scale in
-       any orientation. Measure what it actually projects to and fit that. */
+  if(fitTo){
     let ax=Infinity,bx=-Infinity,ay=Infinity,by=-Infinity;
     for(const wd of wedges) for(const k of VK){
       const p=wd.pts[k];
@@ -318,8 +319,10 @@ function draw(fast){
       const u=dx*R[0]+dy*R[1]+dz*R[2], v=dx*U[0]+dy*U[1]+dz*U[2];
       if(u<ax)ax=u; if(u>bx)bx=u; if(v<ay)ay=v; if(v>by)by=v;
     }
-    const fit=Math.min((W-14)/Math.max(1e-6,bx-ax), (H-14)/Math.max(1e-6,by-ay))*zoom;
-    if(fit<s) s=fit;
+    const need=Math.min(1, Math.min((W-14)/Math.max(1e-6,bx-ax),
+                                    (H-14)/Math.max(1e-6,by-ay))/s);
+    if(need<fitScale) fitScale=need;
+    s*=fitScale;
   }
   const ox=W/2, oy=H/2;
   const pr=p=>{
@@ -403,11 +406,13 @@ function setShape(full,withSteps){
   if(withSteps===undefined) withSteps=SHOW_STEPS;
   if(withSteps){
     order=foldingOrder(shape);
-    fitTo=true;
+    fitTo=true; fitScale=1;
     goToStep(order.length);
+    pinned=centreOf(build(shape));      // hold it still for the whole untwist
+    draw();
     return;
   }
-  order=[]; step=0; fitTo=null;
+  order=[]; step=0; fitTo=null; fitScale=1; pinned=null;
   turns=shape.slice();
   paintShapes();
   recompute();
@@ -434,7 +439,8 @@ function stateAt(k){
 }
 let animRAF=0;
 let pinned=null;
-let fitTo=null;                 // radius of the finished shape, while stepping
+let fitTo=null;                 // true while a fold is being stepped
+let fitScale=1;                 // smallest scale reached; never climbs back
 function radiusOf(ws){
   const c=centreOf(ws);
   let r=1;
@@ -460,7 +466,6 @@ function goToStep(k,animate){
     runTurn(j, k>prev?0:t, k>prev?t:0);
   } else {
     cancelAnimationFrame(animRAF);
-    pinned=null;
     recompute();
   }
 }
@@ -474,7 +479,6 @@ function runTurn(j,from,to){
   if(d>2) d-=4; else if(d<-2) d+=4;
   const a0=from*Math.PI/2, a1=(from+d)*Math.PI/2;
   const dur=280+100*Math.abs(d);
-  pinned=centreOf(build(turns));
   const t0=performance.now();
   (function frame(now){
     let u=(now-t0)/dur; if(u>1) u=1;
@@ -484,7 +488,6 @@ function runTurn(j,from,to){
       draw(true);
       animRAF=requestAnimationFrame(frame);
     } else {
-      pinned=null;
       recompute();                                       // lands back on the lattice
     }
   })(t0);
