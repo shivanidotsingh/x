@@ -8,7 +8,7 @@
 
 :root{
   /* Swap the data URI for url("view.jpg") and raise --view-blur if you drop in a sharp image. */
-  --view-image: url("https://images.unsplash.com/photo-1787997449598-a747c84ebd4b?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D");
+  --view-image: url("https://images.unsplash.com/photo-1773178298523-d15bbe7156a7?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D");
   --view-blur: 5px;
   --ink:#2a2a2e;
   --note-size:176px;
@@ -27,7 +27,7 @@ body{
 .view{
   position:fixed;inset:-30px;z-index:0;
   filter:blur(var(--view-blur)) saturate(.92);
-  background-image:var(--view-image);background-size:cover;background-position:center;
+  background-image:var(--view-image);background-size:cover;background-position:bottom;
 }
 .view video,.view img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
