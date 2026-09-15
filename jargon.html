@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parallel Dictionary</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#f5f1e6;
+    --ink:#111;
+    --muted:rgba(0,0,0,.48);
+    --rule:rgba(0,0,0,.12);
+  }
+
+  html{
+    scroll-behavior:smooth;
+  }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Instrument Serif", serif;
+  }
+
+  /* Left alphabet rail */
+  .alpha{
+
+    position: fixed;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    display:flex;
+    flex-direction:column;
+    gap: 4px;
+    z-index: 2;
+    user-select:none;
+  }
+  .alpha a,
+  .alpha span{
+    font-size: 0.75em;
+    line-height: 2;
+    text-decoration: none;
+    width: 14px;
+    text-align:center;
+  }
+  
+  .alpha a{ color: var(--muted); }
+  .alpha a:hover{ color: var(--ink); }
+  .alpha span{ color: rgba(0,0,0,.18); }
+
+  /* Top-right "suggest" mailto */
+  .suggest{
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration:none;
+    letter-spacing:.04em;
+    z-index: 2;
+  }
+  .suggest:hover{ color: var(--ink); }
+
+  /* Scroll snapping: one entry feels like a page */
+  .stack{
+    scroll-snap-type: y mandatory;
+  }
+
+  .entry{
+    min-height: 72vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 64px 24px;
+    box-sizing:border-box;
+    scroll-snap-align: start;
+  }
+
+  /* Give space for left rail */
+  .inner{
+    max-width: 820px;
+    width:100%;
+    padding-left: 46px; /* makes room for alphabet rail */
+    box-sizing:border-box;
+  }
+
+  .word{
+    font-size: clamp(74px, 11vw, 150px);
+    line-height: .92;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .defs{
+    margin-top: 22px;
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+    margin-left: 8px;       /* slight dictionary offset */
+    max-width: 62ch;
+  }
+
+  .def{
+    display:grid;
+    grid-template-columns: 12ch 1fr;
+    column-gap: 16px;
+    margin: 10px 0;
+  }
+
+  .label{
+    font-size: 10px;         /* small body */
+    text-transform: uppercase;
+    letter-spacing: .10em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .meaning{
+    font-size: 16px;         /* small body */
+    line-height: 1.35;
+  }
+
+  /* Letter anchors (invisible, for clean jumps) */
+  .letterAnchor{
+    position: relative;
+    top: -12px;
+  }
+
+  @media (max-width: 520px){
+    .def{ grid-template-columns: 10ch 1fr; column-gap: 12px; }
+    .inner{ padding-left: 40px; }
+    .alpha{ left: 10px; }
+  }
+</style>
+</head>
+
+<body>
+  <!-- left alphabet (only existing letters are links) -->
+  <nav class="alpha" aria-label="Alphabet index">
+    <a href="#A">A</a>
+    <a href="#B">B</a>
+    <a href="#C">C</a>
+    <a href="#D">D</a>
+    <a href="#E">E</a>
+    <span>F</span><span>G</span><span>H</span>
+    <a href="#I">I</a>
+    <span>J</span><span>K</span><span>L</span>
+    <a href="#M">M</a>
+    <span>N</span><span>O</span>
+    <a href="#P">P</a>
+    <span>Q</span>
+    <a href="#R">R</a>
+    <a href="#S">S</a>
+    <span>T</span><span>U</span><span>V</span><span>W</span><span>X</span>
+    <a href="#Y">Y</a>
+    <span>Z</span>
+  </nav>
+
+  <!-- top right mailto -->
+  <a class="suggest" href="mailto:shivani.singh@cca.edu?subject=Suggest%20a%20word%20for%20Parallel%20Dictionary&body=Word%3A%0AIndustries%3A%0AMeanings%3A">
+    suggest a word
+  </a>
+
+  <main class="stack">
+
+    <!-- A -->
+    <span id="A" class="letterAnchor"></span>
+    <section class="entry" id="agent">
+      <div class="inner">
+        <h1 class="word">Agent</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Real Estate</div><div class="meaning">broker who represents buyer/seller.</div></div>
+          <div class="def"><div class="label">Chemistry</div><div class="meaning">reactive substance / catalyst-like actor.</div></div>
+          <div class="def"><div class="label">Intelligence</div><div class="meaning">operative working under direction.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B -->
+    <span id="B" class="letterAnchor"></span>
+    <section class="entry" id="bar">
+      <div class="inner">
+        <h1 class="word">Bar</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Law</div><div class="meaning">the legal profession; qualification to practice.</div></div>
+          <div class="def"><div class="label">Hospitality</div><div class="meaning">place serving drinks.</div></div>
+          <div class="def"><div class="label">Music</div><div class="meaning">a measure of rhythm.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="entry" id="bond">
+      <div class="inner">
+        <h1 class="word">Bond</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Finance</div><div class="meaning">debt security issued to raise money.</div></div>
+          <div class="def"><div class="label">Chemistry</div><div class="meaning">atomic connection holding molecules together.</div></div>
+          <div class="def"><div class="label">Psychology</div><div class="meaning">emotional attachment / tie between people.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- C -->
+    <span id="C" class="letterAnchor"></span>
+    <section class="entry" id="capital">
+      <div class="inner">
+        <h1 class="word">Capital</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Finance</div><div class="meaning">resources used to invest / produce value.</div></div>
+          <div class="def"><div class="label">Geography</div><div class="meaning">principal city of a state/country.</div></div>
+          <div class="def"><div class="label">Architecture</div><div class="meaning">top of a column.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="entry" id="claim">
+      <div class="inner">
+        <h1 class="word">Claim</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Insurance</div><div class="meaning">request for compensation.</div></div>
+          <div class="def"><div class="label">Law</div><div class="meaning">formal assertion of a right or fact.</div></div>
+          <div class="def"><div class="label">Science</div><div class="meaning">statement that demands evidence.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- D -->
+    <span id="D" class="letterAnchor"></span>
+    <section class="entry" id="draft">
+      <div class="inner">
+        <h1 class="word">Draft</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Writing</div><div class="meaning">preliminary version.</div></div>
+          <div class="def"><div class="label">Military</div><div class="meaning">compulsory enlistment.</div></div>
+          <div class="def"><div class="label">Banking</div><div class="meaning">payment order / bank draft.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- E -->
+    <span id="E" class="letterAnchor"></span>
+    <section class="entry" id="equity">
+      <div class="inner">
+        <h1 class="word">Equity</h1>
+        <div class="defs">
+          <div class="def"><div class="label">HR / Policy</div><div class="meaning">fairness in outcomes (not simply equal inputs).</div></div>
+          <div class="def"><div class="label">Finance</div><div class="meaning">ownership stake in a company.</div></div>
+          <div class="def"><div class="label">Real Estate</div><div class="meaning">value of an asset minus debt.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- I -->
+    <span id="I" class="letterAnchor"></span>
+    <section class="entry" id="instrument">
+      <div class="inner">
+        <h1 class="word">Instrument</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Law</div><div class="meaning">formal legal document.</div></div>
+          <div class="def"><div class="label">Finance</div><div class="meaning">tradable asset type (financial instrument).</div></div>
+          <div class="def"><div class="label">Music</div><div class="meaning">sound-producing device.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- M -->
+    <span id="M" class="letterAnchor"></span>
+    <section class="entry" id="margin">
+      <div class="inner">
+        <h1 class="word">Margin</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Publishing</div><div class="meaning">space around text.</div></div>
+          <div class="def"><div class="label">Finance</div><div class="meaning">collateral / borrowed leverage for trading.</div></div>
+          <div class="def"><div class="label">Politics</div><div class="meaning">electoral difference.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="entry" id="motion">
+      <div class="inner">
+        <h1 class="word">Motion</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Law</div><div class="meaning">formal court request.</div></div>
+          <div class="def"><div class="label">Governance</div><div class="meaning">proposal put to a vote.</div></div>
+          <div class="def"><div class="label">Film</div><div class="meaning">moving image (“motion picture”).</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- P -->
+    <span id="P" class="letterAnchor"></span>
+    <section class="entry" id="pilot">
+      <div class="inner">
+        <h1 class="word">Pilot</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Aviation</div><div class="meaning">aircraft operator.</div></div>
+          <div class="def"><div class="label">Television</div><div class="meaning">first test episode.</div></div>
+          <div class="def"><div class="label">Policy</div><div class="meaning">trial program.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="entry" id="platform">
+      <div class="inner">
+        <h1 class="word">Platform</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Tech</div><div class="meaning">ecosystem others build on.</div></div>
+          <div class="def"><div class="label">Politics</div><div class="meaning">policy agenda.</div></div>
+          <div class="def"><div class="label">Performance</div><div class="meaning">raised stage/surface.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="entry" id="portfolio">
+      <div class="inner">
+        <h1 class="word">Portfolio</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Design</div><div class="meaning">curated body of work.</div></div>
+          <div class="def"><div class="label">Finance</div><div class="meaning">collection of investments/holdings.</div></div>
+          <div class="def"><div class="label">Government</div><div class="meaning">ministerial responsibility.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- R -->
+    <span id="R" class="letterAnchor"></span>
+    <section class="entry" id="resolution">
+      <div class="inner">
+        <h1 class="word">Resolution</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Conflict</div><div class="meaning">settlement / solution.</div></div>
+          <div class="def"><div class="label">Imaging</div><div class="meaning">level of detail (pixel density).</div></div>
+          <div class="def"><div class="label">Politics</div><div class="meaning">formal declaration or decision.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- S -->
+    <span id="S" class="letterAnchor"></span>
+    <section class="entry" id="sidebar">
+      <div class="inner">
+        <h1 class="word">Sidebar</h1>
+        <div class="defs">
+          <div class="def"><div class="label">UI</div><div class="meaning">secondary navigation/content panel.</div></div>
+          <div class="def"><div class="label">Law</div><div class="meaning">private bench discussion.</div></div>
+          <div class="def"><div class="label">Journalism</div><div class="meaning">supplementary explainer box.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="entry" id="spread">
+      <div class="inner">
+        <h1 class="word">Spread</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Finance</div><div class="meaning">difference between prices or rates.</div></div>
+          <div class="def"><div class="label">Publishing</div><div class="meaning">two-page layout.</div></div>
+          <div class="def"><div class="label">Epidemiology</div><div class="meaning">transmission (“spread of disease”).</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Y -->
+    <span id="Y" class="letterAnchor"></span>
+    <section class="entry" id="yield">
+      <div class="inner">
+        <h1 class="word">Yield</h1>
+        <div class="defs">
+          <div class="def"><div class="label">Agriculture</div><div class="meaning">crop output.</div></div>
+          <div class="def"><div class="label">Finance</div><div class="meaning">return on investment.</div></div>
+          <div class="def"><div class="label">Traffic</div><div class="meaning">give right of way.</div></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>
