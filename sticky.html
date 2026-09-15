@@ -6,8 +6,10 @@
 <title>the point of a sticky note</title>
 <style>
 :root{
-  /* the field the notes sit on — #fff for stark, darker for more pop */
+  /* the field the notes sit on */
   --field:#e9eaea;
+  --grid:30px;
+  --grid-ink:rgba(42,42,46,.06);
   --ink:#2a2a2e;
   --note-size:176px;
 }
@@ -16,7 +18,11 @@ html,body{height:100%;overflow:hidden}
 body{
   font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;
   color:var(--ink);
-  background:var(--field);
+  background-color:var(--field);
+  background-image:
+    linear-gradient(to right, var(--grid-ink) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-ink) 1px, transparent 1px);
+  background-size:var(--grid) var(--grid);
   -webkit-font-smoothing:antialiased;
 }
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
