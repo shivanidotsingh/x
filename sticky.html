@@ -15,7 +15,6 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{
   font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;
   color:var(--ink);
@@ -131,12 +130,10 @@ const glass = document.getElementById('glass');
 const again = document.getElementById('again');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let idx = 0, held = null, placed = [], running = false, topZ = 10;
+let idx = 0, held = null, placed = [], running = false;
 
-/* One note size everywhere. 176px is what the longest line needs to
-   carry ~25px type; the two fractions only step in on very small screens. */
 function size(){
-  return Math.round(Math.min(176, innerWidth * 0.5, innerHeight * 0.3));
+  return Math.round(Math.min(176, innerWidth * 0.36, innerHeight * 0.26));
 }
 function applySize(){
   document.documentElement.style.setProperty('--note-size', size() + 'px');
@@ -164,20 +161,18 @@ function measure(){
   t.appendChild(sp); probe.appendChild(t);
   document.body.appendChild(probe);
 
-  let lo = 8, hi = size() * 0.34, best = 0;
-  if (t.clientHeight > 0){
-    for (let i = 0; i < 16; i++){
-      const mid = (lo + hi) / 2;
-      t.style.fontSize = mid + 'px';
-      const fits = LINES.every(function(l){
-        sp.textContent = l;
-        return sp.offsetHeight <= t.clientHeight;
-      });
-      if (fits){ best = mid; lo = mid; } else { hi = mid; }
-    }
+  let px = size() * 0.24, guard = 90;
+  while (guard-- > 0 && px > 8){
+    t.style.fontSize = px + 'px';
+    const fits = LINES.every(function(l){
+      sp.textContent = l;
+      return sp.offsetHeight <= t.clientHeight;
+    });
+    if (fits) break;
+    px -= 0.5;
   }
   probe.remove();
-  uniformPx = best > 0 ? Math.floor(best * 2) / 2 : size() * 0.13;
+  uniformPx = px;
 }
 function fit(el){
   if (uniformPx === null) measure();
@@ -241,12 +236,12 @@ function stick(n, x, y, angle){
   n.classList.add('placed');
   n.style.left = x + 'px';
   n.style.top  = y + 'px';
-  n.style.zIndex = ++topZ;
+  n.style.zIndex = 10 + placed.length;
   n.style.transform = 'rotate(' + angle.toFixed(2) + 'deg)';
   n.tabIndex = 0;
   n.addEventListener('pointerdown', function(){
     if (held) return;              // a tap while holding is a placement
-    n.style.zIndex = ++topZ;       // stands in for :hover, which touch lacks
+    n.style.zIndex = 10 + placed.length;       // stands in for :hover, which touch lacks
   });
   glass.appendChild(n);
   placed.push({el: n, x: x, y: y});
@@ -286,19 +281,12 @@ addEventListener('keydown', function(e){
   place((col + 0.5) * (innerWidth / 4), (row + 0.45) * (innerHeight / 3));
 });
 
-let lastSize = 0;
-function refit(){
-  const s = size();
-  if (s === lastSize) return;
-  lastSize = s;
+addEventListener('resize', function(){
   applySize();
   measure();
   placed.forEach(function(n){ fit(n.el); });
   if (held) fit(held);
-}
-addEventListener('resize', refit);
-addEventListener('orientationchange', refit);
-addEventListener('load', refit);
+});
 
 /* The opening line is already on the glass when you arrive —
    it reads as the title, and shows you what you're about to do. */
@@ -316,7 +304,7 @@ function seed(){
 
 again.addEventListener('click', function(){
   placed.forEach(function(n){ n.el.remove(); });
-  placed = []; topZ = 10;
+  placed = [];
   if (held){ held.remove(); held = null; running = false; }
   bag = []; lastColour = null;
   again.classList.remove('on');
