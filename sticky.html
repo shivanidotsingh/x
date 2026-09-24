@@ -130,10 +130,18 @@ const glass = document.getElementById('glass');
 const again = document.getElementById('again');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let idx = 0, held = null, placed = [], running = false;
+let idx = 0, held = null, placed = [], running = false, topZ = 10;
 
+/* Desktop caps notes small enough that thirteen tile without much
+   overlap. A phone has no cursor to hold one with, so that constraint
+   buys nothing there — go big and let them stack instead. */
+function touchish(){
+  return matchMedia('(pointer: coarse)').matches || innerWidth < 760;
+}
 function size(){
-  return Math.round(Math.min(176, innerWidth * 0.36, innerHeight * 0.26));
+  return touchish()
+    ? Math.round(Math.min(280, innerWidth * 0.62, innerHeight * 0.30))
+    : Math.round(Math.min(176, innerWidth * 0.36, innerHeight * 0.26));
 }
 function applySize(){
   document.documentElement.style.setProperty('--note-size', size() + 'px');
@@ -236,9 +244,13 @@ function stick(n, x, y, angle){
   n.classList.add('placed');
   n.style.left = x + 'px';
   n.style.top  = y + 'px';
-  n.style.zIndex = 10 + placed.length;
+  n.style.zIndex = ++topZ;
   n.style.transform = 'rotate(' + angle.toFixed(2) + 'deg)';
   n.tabIndex = 0;
+  n.addEventListener('pointerdown', function(){
+    if (held) return;              // a tap while holding is a placement
+    n.style.zIndex = ++topZ;       // stands in for :hover, which touch lacks
+  });
   glass.appendChild(n);
   placed.push({el: n, x: x, y: y});
 }
@@ -300,7 +312,7 @@ function seed(){
 
 again.addEventListener('click', function(){
   placed.forEach(function(n){ n.el.remove(); });
-  placed = [];
+  placed = []; topZ = 10;
   if (held){ held.remove(); held = null; running = false; }
   bag = []; lastColour = null;
   again.classList.remove('on');
