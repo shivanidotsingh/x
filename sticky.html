@@ -133,16 +133,10 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let idx = 0, held = null, placed = [], running = false, topZ = 10;
 
-/* Desktop caps notes small enough that thirteen tile without much
-   overlap. A phone has no cursor to hold one with, so that constraint
-   buys nothing there — go big and let them stack instead. */
-function touchish(){
-  return matchMedia('(pointer: coarse)').matches || innerWidth < 760;
-}
+/* One note size everywhere. 176px is what the longest line needs to
+   carry ~25px type; the two fractions only step in on very small screens. */
 function size(){
-  return touchish()
-    ? Math.round(Math.min(300, innerWidth * 0.64, innerHeight * 0.42))
-    : Math.round(Math.min(176, innerWidth * 0.36, innerHeight * 0.26));
+  return Math.round(Math.min(176, innerWidth * 0.5, innerHeight * 0.3));
 }
 function applySize(){
   document.documentElement.style.setProperty('--note-size', size() + 'px');
