@@ -15,6 +15,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{
   font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;
   color:var(--ink);
@@ -140,7 +141,7 @@ function touchish(){
 }
 function size(){
   return touchish()
-    ? Math.round(Math.min(280, innerWidth * 0.62, innerHeight * 0.30))
+    ? Math.round(Math.min(300, innerWidth * 0.64, innerHeight * 0.42))
     : Math.round(Math.min(176, innerWidth * 0.36, innerHeight * 0.26));
 }
 function applySize(){
@@ -169,18 +170,20 @@ function measure(){
   t.appendChild(sp); probe.appendChild(t);
   document.body.appendChild(probe);
 
-  let px = size() * 0.24, guard = 90;
-  while (guard-- > 0 && px > 8){
-    t.style.fontSize = px + 'px';
-    const fits = LINES.every(function(l){
-      sp.textContent = l;
-      return sp.offsetHeight <= t.clientHeight;
-    });
-    if (fits) break;
-    px -= 0.5;
+  let lo = 8, hi = size() * 0.34, best = 0;
+  if (t.clientHeight > 0){
+    for (let i = 0; i < 16; i++){
+      const mid = (lo + hi) / 2;
+      t.style.fontSize = mid + 'px';
+      const fits = LINES.every(function(l){
+        sp.textContent = l;
+        return sp.offsetHeight <= t.clientHeight;
+      });
+      if (fits){ best = mid; lo = mid; } else { hi = mid; }
+    }
   }
   probe.remove();
-  uniformPx = px;
+  uniformPx = best > 0 ? Math.floor(best * 2) / 2 : size() * 0.13;
 }
 function fit(el){
   if (uniformPx === null) measure();
@@ -289,12 +292,19 @@ addEventListener('keydown', function(e){
   place((col + 0.5) * (innerWidth / 4), (row + 0.45) * (innerHeight / 3));
 });
 
-addEventListener('resize', function(){
+let lastSize = 0;
+function refit(){
+  const s = size();
+  if (s === lastSize) return;
+  lastSize = s;
   applySize();
   measure();
   placed.forEach(function(n){ fit(n.el); });
   if (held) fit(held);
-});
+}
+addEventListener('resize', refit);
+addEventListener('orientationchange', refit);
+addEventListener('load', refit);
 
 /* The opening line is already on the glass when you arrive —
    it reads as the title, and shows you what you're about to do. */
