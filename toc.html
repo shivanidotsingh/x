@@ -137,7 +137,7 @@
             color: #666;
         }
 
-        /* Chips (verbs and nouns) */
+        /* Chips (lens and activities) */
         .chip-group-label {
             font-size: 14px;
             color: #666;
@@ -153,6 +153,7 @@
         .chip {
             font-family: inherit;
             font-size: 14px;
+            text-align: left;
             padding: 8px 14px;
             border: 1px solid #e0e0e0;
             background: white;
@@ -172,11 +173,6 @@
             background: #e6f7ff;
             color: #1CABE2;
             font-weight: 600;
-        }
-
-        .chips.maxed .chip:not(.selected) {
-            opacity: 0.4;
-            cursor: not-allowed;
         }
 
         /* Results */
@@ -263,6 +259,10 @@
                 font-size: 24px;
             }
 
+            .session-goal {
+                font-size: 22px;
+            }
+
             .progress-steps {
                 gap: 4px;
             }
@@ -303,7 +303,7 @@
                 </div>
                 <div class="progress-step" id="step4">
                     <div class="progress-bar-line"></div>
-                    <div class="step-label">Work</div>
+                    <div class="step-label">Focus</div>
                 </div>
             </div>
         </div>
@@ -326,15 +326,17 @@
             <div class="options" id="pathwayOptions"></div>
         </div>
 
-        <!-- Question 4: Verbs and nouns -->
+        <!-- Question 4: Lens and activities -->
         <div class="question-section hidden" id="q4">
-            <div class="question-label">4. What do you do, and with what?</div>
+            <div class="question-label">4. What does your work focus on?</div>
 
-            <div class="chip-group-label">I… (pick up to 3)</div>
-            <div class="chips" id="verbChips"></div>
+            <div id="lensGroup">
+                <div class="chip-group-label">Is your work problem-led or possibility-led? (optional, pick one or both)</div>
+                <div class="chips" id="lensChips"></div>
+            </div>
 
-            <div class="chip-group-label">On which of these? (optional)</div>
-            <div class="chips" id="nounChips"></div>
+            <div class="chip-group-label">Which of these describe your work? (pick any that apply)</div>
+            <div class="chips" id="activityChips"></div>
 
             <div class="actions">
                 <button class="button" id="buildBtn" onclick="showResults()" disabled>Show my sentence</button>
@@ -356,7 +358,7 @@
 
     <script>
         // ---------------------------------------------------------------
-        // DATA (edit this section to change teams, pathways, verbs, nouns)
+        // DATA (edit this section to change teams, pathways, lenses, activities)
         // ---------------------------------------------------------------
         const teams = {
             systems: {
@@ -378,64 +380,70 @@
             initiatives: 'Initiatives'
         };
 
+        // hasLens: true shows the problem-led / possibility-led question for that pathway
         const pathways = {
             accelerate: {
                 label: 'Accelerate solutions',
                 phrase: 'accelerate solutions',
                 desc: 'Discover and de-risk emerging possibilities; identify, refine and scale proven innovations; generate credible evidence.',
-                outcome: 'better evidence and solutions packaged for scale'
+                outcome: 'better evidence and solutions packaged for scale',
+                hasLens: true
             },
             external: {
                 label: 'Strengthen the external enabling environment',
                 phrase: 'strengthen the external enabling environment',
                 desc: 'Influence policy, markets and ecosystems; expand partnerships; increase financing, accessibility, availability and demand for responsible innovation.',
-                outcome: 'strengthened partnerships and stronger demand'
+                outcome: 'strengthened partnerships and stronger demand',
+                hasLens: false
             },
             internal: {
                 label: 'Strengthen the internal enabling environment',
                 phrase: 'strengthen the internal enabling environment',
                 desc: 'Strengthen governance, culture, processes, capability and risk-taking so UNICEF can use innovation systematically and responsibly.',
-                outcome: 'enabling conditions and skill development'
+                outcome: 'enabling conditions and skill development',
+                hasLens: false
             }
         };
 
-        // "pathways" controls which pathway shows each verb
-        const verbs = [
-            { label: 'Learn',       pathways: ['accelerate'] },
-            { label: 'Discover',    pathways: ['accelerate'] },
-            { label: 'Explore',     pathways: ['accelerate'] },
-            { label: 'Identify',    pathways: ['accelerate'] },
-            { label: 'Source',      pathways: ['accelerate'] },
-            { label: 'Connect',     pathways: ['accelerate'] },
-            { label: 'Pilot',       pathways: ['accelerate'] },
-            { label: 'De-risk',     pathways: ['accelerate'] },
-            { label: 'Scale',       pathways: ['accelerate'] },
-            { label: 'Collaborate', pathways: ['external', 'internal'] },
-            { label: 'Convene',     pathways: ['external', 'internal'] },
-            { label: 'Disseminate', pathways: ['external', 'internal'] },
-            { label: 'Capacitate',  pathways: ['external', 'internal'] },
-            { label: 'Empower',     pathways: ['external', 'internal'] },
-            { label: 'Enable',      pathways: ['external', 'internal'] },
-            { label: 'Inspire',     pathways: ['external', 'internal'] },
-            { label: 'Influence',   pathways: ['external', 'internal'] },
-            { label: 'Champion',    pathways: ['external', 'internal'] },
-            { label: 'Strategise',  pathways: ['external', 'internal'] },
-            { label: 'Mentor',      pathways: ['external', 'internal'] },
-            { label: 'Guide',       pathways: ['external', 'internal'] },
-            { label: 'Demonstrate', pathways: ['external', 'internal'] },
-            { label: 'Lead',        pathways: ['external', 'internal'] }
+        const lenses = [
+            { label: 'Problem-led',     phrase: 'problem-led' },
+            { label: 'Possibility-led', phrase: 'possibility-led' }
         ];
 
-        const nouns = [
-            'AI for Teachers', 'AI for CHWs', 'AI in play', '5D FW', 'MEL Toolbox',
-            'Sprint Lab', 'DPG', 'V Fund', 'Spark', 'GCC', 'Insights', 'Compass', 'F Tech'
+        // label = what people click (your board wording)
+        // phrase = how it reads in the sentence
+        // pathways = which pathway(s) show this activity
+        const activities = [
+            { label: 'Scaling and Embedding Solutions',
+              phrase: 'scaling and embedding solutions',
+              pathways: ['accelerate'] },
+            { label: 'Designing and Testing Solutions',
+              phrase: 'designing and testing solutions',
+              pathways: ['accelerate'] },
+            { label: 'Finding and Prioritizing best options',
+              phrase: 'finding and prioritizing best options',
+              pathways: ['accelerate'] },
+            { label: 'Generate and Harness Evidence',
+              phrase: 'generating and harnessing evidence',
+              pathways: ['accelerate'] },
+            { label: 'Leverage Public and Private Financing for Scale',
+              phrase: 'leveraging public and private financing for scale',
+              pathways: ['accelerate', 'external'] },
+            { label: 'Policy and Programme Advice',
+              phrase: 'policy and programme advice',
+              pathways: ['external', 'internal'] },
+            { label: 'Advocate and expand partnerships',
+              phrase: 'advocating for and expanding partnerships',
+              pathways: ['external', 'internal'] },
+            { label: 'Strengthening how innovation works',
+              phrase: 'strengthening how innovation works',
+              pathways: ['internal'] }
         ];
 
         // ---------------------------------------------------------------
         // LOGIC
         // ---------------------------------------------------------------
-        let selections = { team: null, area: null, pathway: null, verbs: [], nouns: [] };
-        const MAX_VERBS = 3;
+        let selections = { team: null, area: null, pathway: null, lenses: [], activities: [] };
 
         function renderOptions(containerId, items, onPick) {
             const container = document.getElementById(containerId);
@@ -455,9 +463,9 @@
             });
         }
 
-        function renderChips(containerId, items, selectedList, max, onChange) {
+        // Multi-select chips. Mutates selectedList in place.
+        function renderChips(containerId, items, selectedList, onChange) {
             const container = document.getElementById(containerId);
-            container.classList.remove('maxed');
             container.innerHTML = items.map(item =>
                 `<button type="button" class="chip" data-value="${item}">${item}</button>`
             ).join('');
@@ -470,13 +478,9 @@
                     if (index > -1) {
                         selectedList.splice(index, 1);
                         chip.classList.remove('selected');
-                    } else if (!max || selectedList.length < max) {
+                    } else {
                         selectedList.push(value);
                         chip.classList.add('selected');
-                    }
-
-                    if (max) {
-                        container.classList.toggle('maxed', selectedList.length >= max);
                     }
                     onChange();
                 });
@@ -508,15 +512,18 @@
 
         function pickPathway(value) {
             selections.pathway = value;
-            selections.verbs = [];
-            selections.nouns = [];
+            selections.lenses = [];
+            selections.activities = [];
 
-            const verbsForPathway = verbs
-                .filter(v => v.pathways.includes(value))
-                .map(v => v.label);
+            // Lens question only for pathways that have one
+            document.getElementById('lensGroup').style.display = pathways[value].hasLens ? 'block' : 'none';
 
-            renderChips('verbChips', verbsForPathway, selections.verbs, MAX_VERBS, updateBuildButton);
-            renderChips('nounChips', nouns, selections.nouns, null, () => {});
+            renderChips('lensChips', lenses.map(l => l.label), selections.lenses, () => {});
+
+            const activityLabels = activities
+                .filter(a => a.pathways.includes(value))
+                .map(a => a.label);
+            renderChips('activityChips', activityLabels, selections.activities, updateBuildButton);
 
             updateBuildButton();
             updateProgress(4);
@@ -524,7 +531,7 @@
         }
 
         function updateBuildButton() {
-            document.getElementById('buildBtn').disabled = selections.verbs.length === 0;
+            document.getElementById('buildBtn').disabled = selections.activities.length === 0;
         }
 
         function showQuestion(id) {
@@ -553,8 +560,18 @@
             const { team, area, pathway } = selections;
             const p = pathways[pathway];
 
-            const verbList = joinHighlighted(selections.verbs.map(v => v.toLowerCase()));
-            const nounList = selections.nouns.length ? joinHighlighted(selections.nouns) : 'our work';
+            const activityPhrases = selections.activities.map(label =>
+                activities.find(a => a.label === label).phrase
+            );
+            const activityList = joinHighlighted(activityPhrases);
+
+            let opener = 'My';
+            if (p.hasLens && selections.lenses.length) {
+                const lensPhrases = selections.lenses.map(label =>
+                    lenses.find(l => l.label === label).phrase
+                );
+                opener = `Taking a ${joinHighlighted(lensPhrases)} approach, my`;
+            }
 
             document.querySelectorAll('.question-section').forEach(q => q.classList.add('hidden'));
             document.getElementById('results').classList.add('active');
@@ -562,8 +579,8 @@
             document.getElementById('summary').innerHTML = `
                 <div class="session-goal">
                     I work in <span class="highlight">${areas[area].toLowerCase()}</span> within <span class="highlight">${teams[team].label}</span>.
-                    I ${verbList} ${nounList} to <span class="highlight">${p.phrase}</span>,
-                    creating <span class="highlight">${p.outcome}</span>,
+                    ${opener} work focuses on ${activityList},
+                    helping to <span class="highlight">${p.phrase}</span> and create <span class="highlight">${p.outcome}</span>,
                     so that innovation advances results for children.
                 </div>
             `;
@@ -589,7 +606,7 @@
         }
 
         function reset() {
-            selections = { team: null, area: null, pathway: null, verbs: [], nouns: [] };
+            selections = { team: null, area: null, pathway: null, lenses: [], activities: [] };
             document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
             document.getElementById('results').classList.remove('active');
             showQuestion('q1');
