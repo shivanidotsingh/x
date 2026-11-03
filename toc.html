@@ -189,6 +189,12 @@
             font-weight: 600;
         }
 
+        /* Once the maximum is picked, fade the rest */
+        .chips.maxed .chip:not(.selected) {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
         /* Results */
         .results {
             display: none;
@@ -350,9 +356,9 @@
             <div class="options" id="pathwayOptions"></div>
         </div>
 
-        <!-- Question 4: Activities -->
+        <!-- Question 4: Activities (same options for everyone, max 3) -->
         <div class="question-section hidden" id="q4">
-            <div class="question-label">4. Which of these describe your work? (pick any that apply)</div>
+            <div class="question-label">4. Which of these describe your work? (pick up to 3)</div>
             <div class="chips" id="activityChips"></div>
 
             <div class="actions">
@@ -429,33 +435,26 @@
 
         // label = what people click (your board wording)
         // phrase = how it reads in the sentence
-        // pathways = which pathway(s) show this activity
         const activities = [
             { label: 'Scaling and Embedding Solutions',
-              phrase: 'scaling and embedding solutions',
-              pathways: ['accelerate'] },
+              phrase: 'scaling and embedding solutions' },
             { label: 'Designing and Testing Solutions',
-              phrase: 'designing and testing solutions',
-              pathways: ['accelerate'] },
+              phrase: 'designing and testing solutions' },
             { label: 'Finding and Prioritizing best options',
-              phrase: 'finding and prioritizing best options',
-              pathways: ['accelerate'] },
+              phrase: 'finding and prioritizing best options' },
             { label: 'Generate and Harness Evidence',
-              phrase: 'generating and harnessing evidence',
-              pathways: ['accelerate'] },
+              phrase: 'generating and harnessing evidence' },
             { label: 'Leverage Public and Private Financing for Scale',
-              phrase: 'leveraging public and private financing for scale',
-              pathways: ['accelerate', 'external'] },
+              phrase: 'leveraging public and private financing for scale' },
             { label: 'Policy and Programme Advice',
-              phrase: 'policy and programme advice',
-              pathways: ['external', 'internal'] },
+              phrase: 'policy and programme advice' },
             { label: 'Advocate and expand partnerships',
-              phrase: 'advocating for and expanding partnerships',
-              pathways: ['external', 'internal'] },
+              phrase: 'advocating for and expanding partnerships' },
             { label: 'Strengthening how innovation works',
-              phrase: 'strengthening how innovation works',
-              pathways: ['internal'] }
+              phrase: 'strengthening how innovation works' }
         ];
+
+        const MAX_ACTIVITIES = 3;
 
         // ---------------------------------------------------------------
         // LOGIC
@@ -480,9 +479,10 @@
             });
         }
 
-        // Multi-select chips. Mutates selectedList in place.
-        function renderChips(containerId, items, selectedList, onChange) {
+        // Multi-select chips with an optional maximum. Mutates selectedList in place.
+        function renderChips(containerId, items, selectedList, max, onChange) {
             const container = document.getElementById(containerId);
+            container.classList.remove('maxed');
             container.innerHTML = items.map(item =>
                 `<button type="button" class="chip" data-value="${item}">${item}</button>`
             ).join('');
@@ -495,9 +495,13 @@
                     if (index > -1) {
                         selectedList.splice(index, 1);
                         chip.classList.remove('selected');
-                    } else {
+                    } else if (!max || selectedList.length < max) {
                         selectedList.push(value);
                         chip.classList.add('selected');
+                    }
+
+                    if (max) {
+                        container.classList.toggle('maxed', selectedList.length >= max);
                     }
                     onChange();
                 });
@@ -586,11 +590,9 @@
         }
 
         function goToFocus() {
-            const activityLabels = activities
-                .filter(a => a.pathways.includes(selections.pathway))
-                .map(a => a.label);
+            const activityLabels = activities.map(a => a.label);
 
-            renderChips('activityChips', activityLabels, selections.activities, updateBuildButton);
+            renderChips('activityChips', activityLabels, selections.activities, MAX_ACTIVITIES, updateBuildButton);
 
             updateBuildButton();
             updateProgress(4);
