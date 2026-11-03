@@ -137,13 +137,27 @@
             color: #666;
         }
 
-        /* Chips (lens and activities) */
-        .chip-group-label {
-            font-size: 14px;
-            color: #666;
-            margin: 24px 0 10px;
+        /* Lens panel (appears under the Accelerate card) */
+        .lens-panel {
+            display: none;
+            margin: -4px 0 4px 20px;
+            padding-left: 16px;
+            border-left: 3px solid #1CABE2;
         }
 
+        .lens-panel-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .lens-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* Chips (lens and activities) */
         .chips {
             display: flex;
             flex-wrap: wrap;
@@ -196,7 +210,6 @@
             font-weight: 600;
             color: #333;
             line-height: 1.4;
-            margin-bottom: 16px;
         }
 
         .session-goal .highlight {
@@ -204,10 +217,17 @@
             font-weight: 600;
         }
 
-        .session-focus {
-            font-size: 15px;
+        .session-sub {
+            font-size: 18px;
+            font-weight: 400;
             color: #666;
-            margin-top: 12px;
+            line-height: 1.5;
+            margin-top: 20px;
+        }
+
+        .session-sub .highlight {
+            color: #1CABE2;
+            font-weight: 600;
         }
 
         /* Buttons */
@@ -261,6 +281,10 @@
 
             .session-goal {
                 font-size: 22px;
+            }
+
+            .session-sub {
+                font-size: 16px;
             }
 
             .progress-steps {
@@ -320,22 +344,15 @@
             <div class="options" id="areaOptions"></div>
         </div>
 
-        <!-- Question 3: Pathway -->
+        <!-- Question 3: Pathway (lens appears under Accelerate) -->
         <div class="question-section hidden" id="q3">
             <div class="question-label">3. Innovation advances results for children. Which of these is closest to the work you do?</div>
             <div class="options" id="pathwayOptions"></div>
         </div>
 
-        <!-- Question 4: Lens and activities -->
+        <!-- Question 4: Activities -->
         <div class="question-section hidden" id="q4">
-            <div class="question-label">4. What does your work focus on?</div>
-
-            <div id="lensGroup">
-                <div class="chip-group-label">Is your work problem-led or possibility-led? (optional, pick one or both)</div>
-                <div class="chips" id="lensChips"></div>
-            </div>
-
-            <div class="chip-group-label">Which of these describe your work? (pick any that apply)</div>
+            <div class="question-label">4. Which of these describe your work? (pick any that apply)</div>
             <div class="chips" id="activityChips"></div>
 
             <div class="actions">
@@ -346,8 +363,7 @@
         <!-- Results -->
         <div class="results" id="results">
             <div class="results-header">
-                <div class="selection-summary" id="summary"></div>
-                <div class="focus-areas" id="focusAreas"></div>
+                <div id="summary"></div>
             </div>
             <div class="actions">
                 <button class="button button-secondary" onclick="reset()">Start Over</button>
@@ -380,7 +396,8 @@
             initiatives: 'Initiatives'
         };
 
-        // hasLens: true shows the problem-led / possibility-led question for that pathway
+        // hasLens: true shows the problem-led / possibility-led choice under that pathway
+        // outcome: shown in the smaller line under the main sentence
         const pathways = {
             accelerate: {
                 label: 'Accelerate solutions',
@@ -406,8 +423,8 @@
         };
 
         const lenses = [
-            { label: 'Problem-led',     phrase: 'problem-led' },
-            { label: 'Possibility-led', phrase: 'possibility-led' }
+            { value: 'problem',     label: 'Problem-led',     phrase: 'problem-led' },
+            { value: 'possibility', label: 'Possibility-led', phrase: 'possibility-led' }
         ];
 
         // label = what people click (your board wording)
@@ -443,7 +460,7 @@
         // ---------------------------------------------------------------
         // LOGIC
         // ---------------------------------------------------------------
-        let selections = { team: null, area: null, pathway: null, lenses: [], activities: [] };
+        let selections = { team: null, area: null, pathway: null, lens: null, activities: [] };
 
         function renderOptions(containerId, items, onPick) {
             const container = document.getElementById(containerId);
@@ -487,6 +504,42 @@
             });
         }
 
+        // Question 3: pathway cards, with a lens panel tucked under any pathway that has one
+        function renderPathwayQuestion() {
+            renderOptions(
+                'pathwayOptions',
+                Object.entries(pathways).map(([value, p]) => ({ value, title: p.label, desc: p.desc })),
+                pickPathway
+            );
+
+            Object.entries(pathways).forEach(([value, p]) => {
+                if (!p.hasLens) return;
+
+                const card = document.querySelector(`#pathwayOptions .option[data-value="${value}"]`);
+                const panel = document.createElement('div');
+                panel.className = 'lens-panel';
+                panel.id = `lensPanel-${value}`;
+                panel.innerHTML = `
+                    <div class="lens-panel-label">Is your work problem-led or possibility-led?</div>
+                    <div class="lens-options">
+                        ${lenses.map(l => `<button type="button" class="chip" data-value="${l.value}">${l.label}</button>`).join('')}
+                    </div>
+                `;
+                card.insertAdjacentElement('afterend', panel);
+
+                panel.querySelectorAll('.chip').forEach(chip => {
+                    chip.addEventListener('click', () => pickLens(chip.dataset.value, chip));
+                });
+            });
+        }
+
+        function hideLensPanels() {
+            document.querySelectorAll('.lens-panel').forEach(panel => {
+                panel.style.display = 'none';
+                panel.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            });
+        }
+
         function pickTeam(value) {
             selections.team = value;
             selections.area = null;
@@ -512,17 +565,31 @@
 
         function pickPathway(value) {
             selections.pathway = value;
-            selections.lenses = [];
+            selections.lens = null;
             selections.activities = [];
+            hideLensPanels();
 
-            // Lens question only for pathways that have one
-            document.getElementById('lensGroup').style.display = pathways[value].hasLens ? 'block' : 'none';
+            // Pathways with a lens wait for that choice before moving on
+            if (pathways[value].hasLens) {
+                document.getElementById(`lensPanel-${value}`).style.display = 'block';
+                return;
+            }
 
-            renderChips('lensChips', lenses.map(l => l.label), selections.lenses, () => {});
+            goToFocus();
+        }
 
+        function pickLens(value, chip) {
+            selections.lens = value;
+            chip.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            chip.classList.add('selected');
+            goToFocus();
+        }
+
+        function goToFocus() {
             const activityLabels = activities
-                .filter(a => a.pathways.includes(value))
+                .filter(a => a.pathways.includes(selections.pathway))
                 .map(a => a.label);
+
             renderChips('activityChips', activityLabels, selections.activities, updateBuildButton);
 
             updateBuildButton();
@@ -557,7 +624,7 @@
         }
 
         function showResults() {
-            const { team, area, pathway } = selections;
+            const { team, area, pathway, lens } = selections;
             const p = pathways[pathway];
 
             const activityPhrases = selections.activities.map(label =>
@@ -566,11 +633,9 @@
             const activityList = joinHighlighted(activityPhrases);
 
             let opener = 'My';
-            if (p.hasLens && selections.lenses.length) {
-                const lensPhrases = selections.lenses.map(label =>
-                    lenses.find(l => l.label === label).phrase
-                );
-                opener = `Taking a ${joinHighlighted(lensPhrases)} approach, my`;
+            if (lens) {
+                const lensPhrase = lenses.find(l => l.value === lens).phrase;
+                opener = `Taking a <span class="highlight">${lensPhrase}</span> approach, my`;
             }
 
             document.querySelectorAll('.question-section').forEach(q => q.classList.add('hidden'));
@@ -580,18 +645,19 @@
                 <div class="session-goal">
                     I work in <span class="highlight">${areas[area].toLowerCase()}</span> within <span class="highlight">${teams[team].label}</span>.
                     ${opener} work focuses on ${activityList},
-                    helping to <span class="highlight">${p.phrase}</span> and create <span class="highlight">${p.outcome}</span>,
+                    helping to <span class="highlight">${p.phrase}</span>,
                     so that innovation advances results for children.
                 </div>
+                <div class="session-sub">
+                    My work most closely works toward the output <span class="highlight">${p.outcome}</span>.
+                </div>
             `;
-
-            document.getElementById('focusAreas').innerHTML = `<div class="session-focus">${p.desc}</div>`;
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function copySentence() {
-            const text = document.querySelector('.session-goal').textContent.replace(/\s+/g, ' ').trim();
+            const text = document.getElementById('summary').textContent.replace(/\s+/g, ' ').trim();
             const btn = document.getElementById('copyBtn');
 
             navigator.clipboard.writeText(text)
@@ -606,8 +672,9 @@
         }
 
         function reset() {
-            selections = { team: null, area: null, pathway: null, lenses: [], activities: [] };
+            selections = { team: null, area: null, pathway: null, lens: null, activities: [] };
             document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+            hideLensPanels();
             document.getElementById('results').classList.remove('active');
             showQuestion('q1');
             updateProgress(1);
@@ -621,11 +688,7 @@
             pickTeam
         );
 
-        renderOptions(
-            'pathwayOptions',
-            Object.entries(pathways).map(([value, p]) => ({ value, title: p.label, desc: p.desc })),
-            pickPathway
-        );
+        renderPathwayQuestion();
     </script>
 </body>
 </html>
