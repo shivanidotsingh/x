@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Where do I fit?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border: 1px solid #ddd;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 12px;
+            color: #1CABE2;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+
+        /* Progress */
+        .progress {
+            margin-bottom: 40px;
+        }
+
+        .progress-steps {
+            display: flex;
+            gap: 8px;
+        }
+
+        .progress-step {
+            flex: 1;
+            position: relative;
+        }
+
+        .progress-bar-line {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            transition: background 0.3s ease;
+        }
+
+        .progress-step.active .progress-bar-line,
+        .progress-step.completed .progress-bar-line {
+            background: #1CABE2;
+        }
+
+        .step-label {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .progress-step.active .step-label {
+            color: #1CABE2;
+            font-weight: 600;
+        }
+
+        .progress-step.completed .step-label {
+            color: #666;
+        }
+
+        /* Questions */
+        .question-section {
+            margin-bottom: 40px;
+        }
+
+        .question-section.hidden {
+            display: none;
+        }
+
+        .question-label {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option {
+            padding: 16px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .option:hover {
+            border-color: #1CABE2;
+            background: #f8fcff;
+        }
+
+        .option.selected {
+            border-color: #1CABE2;
+            background: #e6f7ff;
+        }
+
+        .option-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .option-desc {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Chips (verbs and nouns) */
+        .chip-group-label {
+            font-size: 14px;
+            color: #666;
+            margin: 24px 0 10px;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            font-family: inherit;
+            font-size: 14px;
+            padding: 8px 14px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .chip:hover {
+            border-color: #1CABE2;
+            background: #f8fcff;
+        }
+
+        .chip.selected {
+            border-color: #1CABE2;
+            background: #e6f7ff;
+            color: #1CABE2;
+            font-weight: 600;
+        }
+
+        .chips.maxed .chip:not(.selected) {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Results */
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results-header {
+            background: white;
+            padding: 0 0 30px 0;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .session-goal {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+
+        .session-goal .highlight {
+            color: #1CABE2;
+            font-weight: 600;
+        }
+
+        .session-focus {
+            font-size: 15px;
+            color: #666;
+            margin-top: 12px;
+        }
+
+        /* Buttons */
+        .button {
+            background: #1CABE2;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .button:hover {
+            background: #1799c7;
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .button-secondary {
+            background: white;
+            color: #1CABE2;
+            border: 2px solid #1CABE2;
+            margin-right: 12px;
+        }
+
+        .button-secondary:hover {
+            background: #f8fcff;
+        }
+
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .progress-steps {
+                gap: 4px;
+            }
+
+            .step-label {
+                font-size: 9px;
+                margin-top: 6px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .button-secondary {
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Where do I fit?</h1>
+        <p class="subtitle">Place your work in our theory of change.</p>
+
+        <div class="progress">
+            <div class="progress-steps">
+                <div class="progress-step active" id="step1">
+                    <div class="progress-bar-line"></div>
+                    <div class="step-label">Team</div>
+                </div>
+                <div class="progress-step" id="step2">
+                    <div class="progress-bar-line"></div>
+                    <div class="step-label">Area</div>
+                </div>
+                <div class="progress-step" id="step3">
+                    <div class="progress-bar-line"></div>
+                    <div class="step-label">Pathway</div>
+                </div>
+                <div class="progress-step" id="step4">
+                    <div class="progress-bar-line"></div>
+                    <div class="step-label">Work</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 1: Team -->
+        <div class="question-section" id="q1">
+            <div class="question-label">1. Which team do you work in?</div>
+            <div class="options" id="teamOptions"></div>
+        </div>
+
+        <!-- Question 2: Area (depends on team) -->
+        <div class="question-section hidden" id="q2">
+            <div class="question-label" id="areaLabel"></div>
+            <div class="options" id="areaOptions"></div>
+        </div>
+
+        <!-- Question 3: Pathway -->
+        <div class="question-section hidden" id="q3">
+            <div class="question-label">3. Innovation advances results for children. Which of these is closest to the work you do?</div>
+            <div class="options" id="pathwayOptions"></div>
+        </div>
+
+        <!-- Question 4: Verbs and nouns -->
+        <div class="question-section hidden" id="q4">
+            <div class="question-label">4. What do you do, and with what?</div>
+
+            <div class="chip-group-label">I… (pick up to 3)</div>
+            <div class="chips" id="verbChips"></div>
+
+            <div class="chip-group-label">On which of these? (optional)</div>
+            <div class="chips" id="nounChips"></div>
+
+            <div class="actions">
+                <button class="button" id="buildBtn" onclick="showResults()" disabled>Show my sentence</button>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <div class="results-header">
+                <div class="selection-summary" id="summary"></div>
+                <div class="focus-areas" id="focusAreas"></div>
+            </div>
+            <div class="actions">
+                <button class="button button-secondary" onclick="reset()">Start Over</button>
+                <button class="button" id="copyBtn" onclick="copySentence()">Copy sentence</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------------
+        // DATA (edit this section to change teams, pathways, verbs, nouns)
+        // ---------------------------------------------------------------
+        const teams = {
+            systems: {
+                label: 'Systems and Services',
+                areas: ['insights', 'influence', 'design']
+            },
+            solutions: {
+                label: 'Solutions',
+                areas: ['funds', 'frontier', 'initiatives']
+            }
+        };
+
+        const areas = {
+            insights: 'Insights',
+            influence: 'Influence',
+            design: 'Design',
+            funds: 'Funds and financing',
+            frontier: 'Frontier technology',
+            initiatives: 'Initiatives'
+        };
+
+        const pathways = {
+            accelerate: {
+                label: 'Accelerate solutions',
+                phrase: 'accelerate solutions',
+                desc: 'Discover and de-risk emerging possibilities; identify, refine and scale proven innovations; generate credible evidence.',
+                outcome: 'better evidence and solutions packaged for scale'
+            },
+            external: {
+                label: 'Strengthen the external enabling environment',
+                phrase: 'strengthen the external enabling environment',
+                desc: 'Influence policy, markets and ecosystems; expand partnerships; increase financing, accessibility, availability and demand for responsible innovation.',
+                outcome: 'strengthened partnerships and stronger demand'
+            },
+            internal: {
+                label: 'Strengthen the internal enabling environment',
+                phrase: 'strengthen the internal enabling environment',
+                desc: 'Strengthen governance, culture, processes, capability and risk-taking so UNICEF can use innovation systematically and responsibly.',
+                outcome: 'enabling conditions and skill development'
+            }
+        };
+
+        // "pathways" controls which pathway shows each verb
+        const verbs = [
+            { label: 'Learn',       pathways: ['accelerate'] },
+            { label: 'Discover',    pathways: ['accelerate'] },
+            { label: 'Explore',     pathways: ['accelerate'] },
+            { label: 'Identify',    pathways: ['accelerate'] },
+            { label: 'Source',      pathways: ['accelerate'] },
+            { label: 'Connect',     pathways: ['accelerate'] },
+            { label: 'Pilot',       pathways: ['accelerate'] },
+            { label: 'De-risk',     pathways: ['accelerate'] },
+            { label: 'Scale',       pathways: ['accelerate'] },
+            { label: 'Collaborate', pathways: ['external', 'internal'] },
+            { label: 'Convene',     pathways: ['external', 'internal'] },
+            { label: 'Disseminate', pathways: ['external', 'internal'] },
+            { label: 'Capacitate',  pathways: ['external', 'internal'] },
+            { label: 'Empower',     pathways: ['external', 'internal'] },
+            { label: 'Enable',      pathways: ['external', 'internal'] },
+            { label: 'Inspire',     pathways: ['external', 'internal'] },
+            { label: 'Influence',   pathways: ['external', 'internal'] },
+            { label: 'Champion',    pathways: ['external', 'internal'] },
+            { label: 'Strategise',  pathways: ['external', 'internal'] },
+            { label: 'Mentor',      pathways: ['external', 'internal'] },
+            { label: 'Guide',       pathways: ['external', 'internal'] },
+            { label: 'Demonstrate', pathways: ['external', 'internal'] },
+            { label: 'Lead',        pathways: ['external', 'internal'] }
+        ];
+
+        const nouns = [
+            'AI for Teachers', 'AI for CHWs', 'AI in play', '5D FW', 'MEL Toolbox',
+            'Sprint Lab', 'DPG', 'V Fund', 'Spark', 'GCC', 'Insights', 'Compass', 'F Tech'
+        ];
+
+        // ---------------------------------------------------------------
+        // LOGIC
+        // ---------------------------------------------------------------
+        let selections = { team: null, area: null, pathway: null, verbs: [], nouns: [] };
+        const MAX_VERBS = 3;
+
+        function renderOptions(containerId, items, onPick) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = items.map(item => `
+                <div class="option" data-value="${item.value}">
+                    <div class="option-title">${item.title}</div>
+                    ${item.desc ? `<div class="option-desc">${item.desc}</div>` : ''}
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    container.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    onPick(opt.dataset.value);
+                });
+            });
+        }
+
+        function renderChips(containerId, items, selectedList, max, onChange) {
+            const container = document.getElementById(containerId);
+            container.classList.remove('maxed');
+            container.innerHTML = items.map(item =>
+                `<button type="button" class="chip" data-value="${item}">${item}</button>`
+            ).join('');
+
+            container.querySelectorAll('.chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const value = chip.dataset.value;
+                    const index = selectedList.indexOf(value);
+
+                    if (index > -1) {
+                        selectedList.splice(index, 1);
+                        chip.classList.remove('selected');
+                    } else if (!max || selectedList.length < max) {
+                        selectedList.push(value);
+                        chip.classList.add('selected');
+                    }
+
+                    if (max) {
+                        container.classList.toggle('maxed', selectedList.length >= max);
+                    }
+                    onChange();
+                });
+            });
+        }
+
+        function pickTeam(value) {
+            selections.team = value;
+            selections.area = null;
+
+            document.getElementById('areaLabel').textContent =
+                `2. Which part of ${teams[value].label} are you in?`;
+
+            renderOptions(
+                'areaOptions',
+                teams[value].areas.map(a => ({ value: a, title: areas[a] })),
+                pickArea
+            );
+
+            updateProgress(2);
+            showQuestion('q2');
+        }
+
+        function pickArea(value) {
+            selections.area = value;
+            updateProgress(3);
+            showQuestion('q3');
+        }
+
+        function pickPathway(value) {
+            selections.pathway = value;
+            selections.verbs = [];
+            selections.nouns = [];
+
+            const verbsForPathway = verbs
+                .filter(v => v.pathways.includes(value))
+                .map(v => v.label);
+
+            renderChips('verbChips', verbsForPathway, selections.verbs, MAX_VERBS, updateBuildButton);
+            renderChips('nounChips', nouns, selections.nouns, null, () => {});
+
+            updateBuildButton();
+            updateProgress(4);
+            showQuestion('q4');
+        }
+
+        function updateBuildButton() {
+            document.getElementById('buildBtn').disabled = selections.verbs.length === 0;
+        }
+
+        function showQuestion(id) {
+            document.querySelectorAll('.question-section').forEach(q => q.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function updateProgress(currentStep) {
+            document.querySelectorAll('.progress-step').forEach(step => {
+                step.classList.remove('active', 'completed');
+            });
+            for (let i = 1; i < currentStep; i++) {
+                document.getElementById(`step${i}`).classList.add('completed');
+            }
+            document.getElementById(`step${currentStep}`).classList.add('active');
+        }
+
+        // "a, b and c" with each item highlighted
+        function joinHighlighted(items) {
+            const wrapped = items.map(i => `<span class="highlight">${i}</span>`);
+            if (wrapped.length <= 1) return wrapped.join('');
+            return wrapped.slice(0, -1).join(', ') + ' and ' + wrapped[wrapped.length - 1];
+        }
+
+        function showResults() {
+            const { team, area, pathway } = selections;
+            const p = pathways[pathway];
+
+            const verbList = joinHighlighted(selections.verbs.map(v => v.toLowerCase()));
+            const nounList = selections.nouns.length ? joinHighlighted(selections.nouns) : 'our work';
+
+            document.querySelectorAll('.question-section').forEach(q => q.classList.add('hidden'));
+            document.getElementById('results').classList.add('active');
+
+            document.getElementById('summary').innerHTML = `
+                <div class="session-goal">
+                    I work in <span class="highlight">${areas[area].toLowerCase()}</span> within <span class="highlight">${teams[team].label}</span>.
+                    I ${verbList} ${nounList} to <span class="highlight">${p.phrase}</span>,
+                    creating <span class="highlight">${p.outcome}</span>,
+                    so that innovation advances results for children.
+                </div>
+            `;
+
+            document.getElementById('focusAreas').innerHTML = `<div class="session-focus">${p.desc}</div>`;
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function copySentence() {
+            const text = document.querySelector('.session-goal').textContent.replace(/\s+/g, ' ').trim();
+            const btn = document.getElementById('copyBtn');
+
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    btn.textContent = 'Copied';
+                    setTimeout(() => { btn.textContent = 'Copy sentence'; }, 1500);
+                })
+                .catch(() => {
+                    btn.textContent = 'Copy failed';
+                    setTimeout(() => { btn.textContent = 'Copy sentence'; }, 1500);
+                });
+        }
+
+        function reset() {
+            selections = { team: null, area: null, pathway: null, verbs: [], nouns: [] };
+            document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+            document.getElementById('results').classList.remove('active');
+            showQuestion('q1');
+            updateProgress(1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Build questions 1 and 3 on load (2 and 4 depend on earlier answers)
+        renderOptions(
+            'teamOptions',
+            Object.entries(teams).map(([value, t]) => ({ value, title: t.label })),
+            pickTeam
+        );
+
+        renderOptions(
+            'pathwayOptions',
+            Object.entries(pathways).map(([value, p]) => ({ value, title: p.label, desc: p.desc })),
+            pickPathway
+        );
+    </script>
+</body>
+</html>
